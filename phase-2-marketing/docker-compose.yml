@@ -1,0 +1,126 @@
+# ═══════════════════════════════════════════════════════════════
+# FASE 2 · MARKETING v1.2
+#
+# Cambios vs v1.1:
+# - BUG #3 fix: Postiz pinneado a v2.21.7 (estable abril 2026)
+# - BUG #9 fix: NocoBase REMOVIDO. CRUD de leads en n8n contra tabla
+#   `leads` en nexus_core (creada en 01-nexus-core.sql).
+#   NocoBase entra en semana 3 si la complejidad lo justifica.
+# - Apunta a PgBouncer (6432) no a Postgres directo
+# ═══════════════════════════════════════════════════════════════
+
+networks:
+  nexus-public:
+    external: true
+  nexus-backbone:
+    external: true
+  nexus-automation:
+    external: true
+
+volumes:
+  evolution_instances:
+    name: nexus_evolution_instances
+  listmonk_uploads:
+    name: nexus_listmonk_uploads
+  postiz_uploads:
+    name: nexus_postiz_uploads
+
+services:
+  # ────────── EVOLUTION API · WhatsApp ──────────
+  evolution:
+    image: atendai/evolution-api:v2.2.0
+    container_name: nexus-evolution
+    restart: unless-stopped
+    environment:
+      SERVER_URL: https://wa.${DOMAIN}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution_app:${PG_EVOLUTION_PASS}@pgbouncer:6432/evolution
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://:${REDIS_PASS}@redis:6379/4
+      CACHE_REDIS_PREFIX_KEY: evolution
+      WEBHOOK_GLOBAL_URL: https://n8n.${DOMAIN}/webhook/wa-inbound
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+      CONFIG_SESSION_PHONE_CLIENT: NexusBot
+      QRCODE_LIMIT: 30
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - nexus-public
+      - nexus-backbone
+      - nexus-automation
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wa.rule=Host(`wa.${DOMAIN}`)"
+      - "traefik.http.routers.wa.entrypoints=websecure"
+      - "traefik.http.routers.wa.tls.certresolver=le"
+      - "traefik.http.services.wa.loadbalancer.server.port=8080"
+
+  # ────────── LISTMONK ──────────
+  listmonk:
+    image: listmonk/listmonk:v4.1.0
+    container_name: nexus-listmonk
+    restart: unless-stopped
+    command: ["sh", "-c", "./listmonk --install --idempotent --yes && ./listmonk"]
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__host: pgbouncer
+      LISTMONK_db__port: 6432
+      LISTMONK_db__user: listmonk_app
+      LISTMONK_db__password: ${PG_LISTMONK_PASS}
+      LISTMONK_db__database: listmonk
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASS}
+    volumes:
+      - listmonk_uploads:/listmonk/uploads
+    networks:
+      - nexus-public
+      - nexus-backbone
+      - nexus-automation
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.email.rule=Host(`email.${DOMAIN}`)"
+      - "traefik.http.routers.email.entrypoints=websecure"
+      - "traefik.http.routers.email.tls.certresolver=le"
+      - "traefik.http.services.email.loadbalancer.server.port=9000"
+
+  # ────────── POSTIZ · BUG #3 fix: pinneado v2.21.7 ──────────
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:v2.11.5  # MVP: pre-Temporal. Upgrade a v2.21.7 + Temporal después del primer cliente
+    container_name: nexus-postiz
+    restart: unless-stopped
+    environment:
+      MAIN_URL: https://postiz.${DOMAIN}
+      FRONTEND_URL: https://postiz.${DOMAIN}
+      NEXT_PUBLIC_BACKEND_URL: https://postiz.${DOMAIN}/api
+      JWT_SECRET: ${POSTIZ_JWT_SECRET}
+      DATABASE_URL: postgresql://postiz_app:${PG_POSTIZ_PASS}@pgbouncer:6432/postiz
+      REDIS_URL: redis://:${REDIS_PASS}@redis:6379/5
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      IS_GENERAL: "true"
+      DISABLE_REGISTRATION: "false"
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+    volumes:
+      - postiz_uploads:/uploads
+    networks:
+      - nexus-public
+      - nexus-backbone
+      - nexus-automation
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.postiz.rule=Host(`postiz.${DOMAIN}`)"
+      - "traefik.http.routers.postiz.entrypoints=websecure"
+      - "traefik.http.routers.postiz.tls.certresolver=le"
+      - "traefik.http.services.postiz.loadbalancer.server.port=5000"
+
+  # ════════════════════════════════════════════════════════════
+  # SIN NocoBase en v1.2 (BUG #9 fix)
+  # Leads gestionados directo en `nexus_core.leads` desde n8n.
+  # NocoBase entra en semana 3 cuando haya 5+ clientes y operadores
+  # no-técnicos necesiten UI de CRM.
+  # ════════════════════════════════════════════════════════════

@@ -1,0 +1,519 @@
+{
+  "name": "NEXUS · Lead Qualifier (HITL)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook · Lead Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Sanitizer + normalizador de leads de cualquier fuente\nconst body = $input.item.json.body || $input.item.json;\n\nfunction clean(text, max = 500) {\n  if (!text) return '';\n  return String(text).replace(/[\\r\\n]+/g, ' ').replace(/\\s+/g, ' ').trim().substring(0, max);\n}\n\nconst tenant_slug = body.tenant_slug || 'ainexus';\n\nreturn {\n  json: {\n    tenant_slug,\n    lead: {\n      name: clean(body.name),\n      email: clean(body.email, 200),\n      phone: clean(body.phone, 50),\n      company: clean(body.company, 200),\n      website: clean(body.website, 300),\n      message: clean(body.message, 2000),\n      source: body.source || 'webhook',\n      utm_source: body.utm_source || null,\n      utm_campaign: body.utm_campaign || null\n    },\n    request_id: 'lead_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),\n    received_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "2",
+      "name": "Sanitizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_task (tenant_id, workflow_name, status, input_payload) SELECT id, 'lead_qualifier', 'running', $1::jsonb FROM tenants WHERE slug = $2 RETURNING id;",
+        "additionalFields": {
+          "queryParams": "={{ JSON.stringify($json) }},={{ $json.tenant_slug }}"
+        }
+      },
+      "id": "3",
+      "name": "PG · Create task",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://dify-api:5001/v1/workflows/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DIFY_LEAD_QUALIFIER_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": {\n    \"lead_name\": \"{{ $('Sanitizer').item.json.lead.name }}\",\n    \"lead_email\": \"{{ $('Sanitizer').item.json.lead.email }}\",\n    \"lead_company\": \"{{ $('Sanitizer').item.json.lead.company }}\",\n    \"lead_website\": \"{{ $('Sanitizer').item.json.lead.website }}\",\n    \"lead_message\": \"{{ $('Sanitizer').item.json.lead.message }}\",\n    \"source\": \"{{ $('Sanitizer').item.json.lead.source }}\",\n    \"tenant_slug\": \"{{ $('Sanitizer').item.json.tenant_slug }}\"\n  },\n  \"response_mode\": \"blocking\",\n  \"user\": \"lead-qualifier-{{ $('Sanitizer').item.json.tenant_slug }}\"\n}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "4",
+      "name": "Dify · Qualifier Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dify agent debe retornar: { score: 0-100, vertical_match: bool, intent: string, suggested_action: string, suggested_response_es: string }\nconst outputs = $input.item.json.data?.outputs || {};\nconst sanitized = $('Sanitizer').item.json;\nconst taskRow = $('PG · Create task').item.json;\n\nconst score = parseInt(outputs.score) || 0;\nlet tier = 'COLD';\nif (score >= 80) tier = 'HOT';\nelse if (score >= 50) tier = 'WARM';\n\nreturn {\n  json: {\n    task_id: taskRow.id,\n    tenant_slug: sanitized.tenant_slug,\n    lead: sanitized.lead,\n    score,\n    tier,\n    vertical_match: !!outputs.vertical_match,\n    intent: outputs.intent || 'unknown',\n    suggested_action: outputs.suggested_action || '',\n    suggested_response_es: outputs.suggested_response_es || '',\n    qualified_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "5",
+      "name": "Parse · Build tier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads (tenant_id, name, email, phone, company, source, score, tier, intent, qualified_at) SELECT id, $1, $2, $3, $4, $5, $6::int, $7, $8, NOW() FROM tenants WHERE slug = $9 RETURNING id;",
+        "additionalFields": {
+          "queryParams": "={{ $json.lead.name }},={{ $json.lead.email }},={{ $json.lead.phone }},={{ $json.lead.company }},={{ $json.lead.source }},={{ $json.score }},={{ $json.tier }},={{ $json.intent }},={{ $json.tenant_slug }}"
+        }
+      },
+      "id": "6",
+      "name": "PG · Insert lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1200,
+        300
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse · Build tier').item.json.tier }}",
+                    "rightValue": "HOT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HOT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse · Build tier').item.json.tier }}",
+                    "rightValue": "WARM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WARM"
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {
+          "renameFallbackOutput": "COLD"
+        }
+      },
+      "id": "7",
+      "name": "Switch · Route by tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution:8080/message/sendText/{{ $env.AINEXUS_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $env.OPERATOR_WHATSAPP }}\",\n  \"text\": \"🔥 LEAD HOT (score {{ $('Parse · Build tier').item.json.score }})\\n\\n{{ $('Parse · Build tier').item.json.lead.name }} - {{ $('Parse · Build tier').item.json.lead.company }}\\n📧 {{ $('Parse · Build tier').item.json.lead.email }}\\n📱 {{ $('Parse · Build tier').item.json.lead.phone }}\\n\\n💡 Intent: {{ $('Parse · Build tier').item.json.intent }}\\n📋 Acción: {{ $('Parse · Build tier').item.json.suggested_action }}\\n\\n✍️ Respuesta sugerida:\\n{{ $('Parse · Build tier').item.json.suggested_response_es }}\\n\\nAprobar envío: https://n8n.{{ $env.DOMAIN }}/form/nexus-approval-form?task={{ $('Parse · Build tier').item.json.task_id }}\"\n}"
+      },
+      "id": "8",
+      "name": "WhatsApp · Notify operator (HOT)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "options": {
+          "webhookSuffix": "approve-{{ $('Parse · Build tier').item.json.task_id }}"
+        }
+      },
+      "id": "9",
+      "name": "Wait · HOT approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        100
+      ],
+      "webhookId": "approve-hot-lead"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution:8080/message/sendText/{{ $env.AINEXUS_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Parse · Build tier').item.json.lead.phone }}\",\n  \"text\": {{ JSON.stringify($('Parse · Build tier').item.json.suggested_response_es) }}\n}"
+      },
+      "id": "10",
+      "name": "WhatsApp · Reply HOT lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        100
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://email.{{ $env.DOMAIN }}/api/subscribers",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $('Parse · Build tier').item.json.lead.email }}\",\n  \"name\": \"{{ $('Parse · Build tier').item.json.lead.name }}\",\n  \"status\": \"enabled\",\n  \"lists\": [2],\n  \"attribs\": {\n    \"tier\": \"WARM\",\n    \"company\": \"{{ $('Parse · Build tier').item.json.lead.company }}\",\n    \"tenant\": \"{{ $('Parse · Build tier').item.json.tenant_slug }}\"\n  }\n}"
+      },
+      "id": "11",
+      "name": "Listmonk · WARM nurture",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://email.{{ $env.DOMAIN }}/api/subscribers",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $('Parse · Build tier').item.json.lead.email }}\",\n  \"name\": \"{{ $('Parse · Build tier').item.json.lead.name }}\",\n  \"status\": \"enabled\",\n  \"lists\": [3],\n  \"attribs\": {\n    \"tier\": \"COLD\",\n    \"company\": \"{{ $('Parse · Build tier').item.json.lead.company }}\",\n    \"tenant\": \"{{ $('Parse · Build tier').item.json.tenant_slug }}\"\n  }\n}"
+      },
+      "id": "12",
+      "name": "Listmonk · COLD drip",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        500
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE ai_task SET status = 'published', published_at = NOW(), output_payload = $1::jsonb WHERE id = $2;",
+        "additionalFields": {
+          "queryParams": "={{ JSON.stringify($('Parse · Build tier').item.json) }},={{ $('Parse · Build tier').item.json.task_id }}"
+        }
+      },
+      "id": "13",
+      "name": "PG · Mark done",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2200,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\": true, \"received\": true, \"task_id\": \"{{ $('PG \\u00b7 Create task').item.json.id }}\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "14",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        300
+      ],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook · Lead Intake": {
+      "main": [
+        [
+          {
+            "node": "Sanitizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitizer": {
+      "main": [
+        [
+          {
+            "node": "PG · Create task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG · Create task": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dify · Qualifier Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse · Build tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse · Build tier": {
+      "main": [
+        [
+          {
+            "node": "PG · Insert lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch · Route by tier": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp · Notify operator (HOT)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Listmonk · WARM nurture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Listmonk · COLD drip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp · Notify operator (HOT)": {
+      "main": [
+        [
+          {
+            "node": "Wait · HOT approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait · HOT approval": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp · Reply HOT lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp · Reply HOT lead": {
+      "main": [
+        [
+          {
+            "node": "PG · Mark done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listmonk · WARM nurture": {
+      "main": [
+        [
+          {
+            "node": "PG · Mark done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listmonk · COLD drip": {
+      "main": [
+        [
+          {
+            "node": "PG · Mark done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG · Insert lead": {
+      "main": [
+        [
+          {
+            "node": "Switch · Route by tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Dify · Qualifier Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "timezone": "America/Mexico_City"
+  },
+  "tags": [
+    {
+      "name": "nexus-supreme"
+    },
+    {
+      "name": "hitl"
+    },
+    {
+      "name": "lead-qualifier"
+    }
+  ]
+}

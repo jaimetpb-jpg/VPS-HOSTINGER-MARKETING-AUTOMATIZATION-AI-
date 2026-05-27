@@ -1,0 +1,390 @@
+{
+  "name": "NEXUS · WhatsApp Concierge (HITL escalation)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wa-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook · Evolution inbound",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Evolution API webhook payload\nconst body = $input.item.json.body || $input.item.json;\n\n// Solo procesar mensajes entrantes de texto, ignorar status updates\nif (body.event !== 'messages.upsert') return { json: { skip: true } };\nif (body.data?.key?.fromMe) return { json: { skip: true } };\n\nconst msg = body.data?.message?.conversation || body.data?.message?.extendedTextMessage?.text || '';\nif (!msg) return { json: { skip: true } };\n\nconst from = body.data?.key?.remoteJid?.replace('@s.whatsapp.net', '');\nconst instance = body.instance || 'ainexus-main';\nconst tenant_slug = instance.split('-')[0];\n\nreturn {\n  json: {\n    skip: false,\n    tenant_slug,\n    instance,\n    from,\n    message: String(msg).trim().substring(0, 2000),\n    received_at: new Date().toISOString(),\n    request_id: 'wa_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)\n  }\n};"
+      },
+      "id": "2",
+      "name": "Parse Evolution payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "3",
+      "name": "IF · Process message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://dify-api:5001/v1/chat-messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DIFY_CONCIERGE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": {\n    \"tenant_slug\": \"{{ $('Parse Evolution payload').item.json.tenant_slug }}\"\n  },\n  \"query\": \"{{ $('Parse Evolution payload').item.json.message }}\",\n  \"response_mode\": \"blocking\",\n  \"conversation_id\": \"\",\n  \"user\": \"wa-{{ $('Parse Evolution payload').item.json.from }}\",\n  \"auto_generate_name\": false\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "4",
+      "name": "Dify · Concierge Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Dify chatbot retorna answer + metadata\nconst ans = $input.item.json.answer || '';\nconst meta = $input.item.json.metadata || {};\nconst usage = meta.usage || {};\nconst original = $('Parse Evolution payload').item.json;\n\n// El agente Dify debe incluir [ESCALATE] al inicio si requiere humano\nconst escalate = ans.startsWith('[ESCALATE]');\nconst clean_answer = escalate ? ans.replace('[ESCALATE]', '').trim() : ans;\n\nreturn {\n  json: {\n    ...original,\n    agent_response: clean_answer,\n    escalate,\n    tokens_in: usage.prompt_tokens || 0,\n    tokens_out: usage.completion_tokens || 0,\n    cost_usd: parseFloat(usage.total_price || 0)\n  }\n};"
+      },
+      "id": "5",
+      "name": "Parse Dify response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.escalate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "6",
+      "name": "IF · Escalate to human?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution:8080/message/sendText/{{ $('Parse Evolution payload').item.json.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $env.OPERATOR_WHATSAPP }}\",\n  \"text\": \"⚠ ESCALACIÓN HUMANA\\n\\nCliente: {{ $('Parse Evolution payload').item.json.tenant_slug }}\\nContacto: {{ $('Parse Evolution payload').item.json.from }}\\n\\n💬 Mensaje:\\n{{ $('Parse Evolution payload').item.json.message }}\\n\\n🤖 El agente sugiere:\\n{{ $('Parse Dify response').item.json.agent_response }}\\n\\n👉 Tomar control desde Evolution: https://wa.{{ $env.DOMAIN }}\"\n}"
+      },
+      "id": "7",
+      "name": "WhatsApp · Notify operator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution:8080/message/sendText/{{ $('Parse Evolution payload').item.json.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Parse Evolution payload').item.json.from }}\",\n  \"text\": \"Te paso con un asesor humano en breve. Mientras tanto: {{ $('Parse Dify response').item.json.agent_response }}\"\n}"
+      },
+      "id": "8",
+      "name": "WhatsApp · Reply to user (escalated)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        100
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution:8080/message/sendText/{{ $('Parse Evolution payload').item.json.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Parse Evolution payload').item.json.from }}\",\n  \"text\": {{ JSON.stringify($('Parse Dify response').item.json.agent_response) }}\n}"
+      },
+      "id": "9",
+      "name": "WhatsApp · Reply to user (auto)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_task (tenant_id, workflow_name, status, input_payload, output_payload, tokens_in, tokens_out, cost_usd, model_used) SELECT id, 'wa_concierge', $1, $2::jsonb, $3::jsonb, $4, $5, $6, 'agent-copy-es' FROM tenants WHERE slug = $7;",
+        "additionalFields": {
+          "queryParams": "={{ $('Parse Dify response').item.json.escalate ? 'awaiting_approval' : 'published' }},={{ JSON.stringify({ from: $('Parse Evolution payload').item.json.from, message: $('Parse Evolution payload').item.json.message }) }},={{ JSON.stringify({ response: $('Parse Dify response').item.json.agent_response, escalated: $('Parse Dify response').item.json.escalate }) }},={{ $('Parse Dify response').item.json.tokens_in }},={{ $('Parse Dify response').item.json.tokens_out }},={{ $('Parse Dify response').item.json.cost_usd }},={{ $('Parse Evolution payload').item.json.tenant_slug }}"
+        }
+      },
+      "id": "10",
+      "name": "PG · Log interaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1800,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\": true, \"received\": true}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "11",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        300
+      ],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook · Evolution inbound": {
+      "main": [
+        [
+          {
+            "node": "Parse Evolution payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Evolution payload": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF · Process message": {
+      "main": [
+        [
+          {
+            "node": "Dify · Concierge Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Dify · Concierge Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Dify response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Dify response": {
+      "main": [
+        [
+          {
+            "node": "IF · Escalate to human?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF · Escalate to human?": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp · Notify operator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WhatsApp · Reply to user (escalated)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WhatsApp · Reply to user (auto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp · Reply to user (escalated)": {
+      "main": [
+        [
+          {
+            "node": "PG · Log interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp · Reply to user (auto)": {
+      "main": [
+        [
+          {
+            "node": "PG · Log interaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "IF · Process message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "timezone": "America/Mexico_City"
+  },
+  "tags": [
+    {
+      "name": "nexus-supreme"
+    },
+    {
+      "name": "wa-concierge"
+    }
+  ]
+}

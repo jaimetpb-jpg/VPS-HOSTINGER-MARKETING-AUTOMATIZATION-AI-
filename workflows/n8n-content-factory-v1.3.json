@@ -1,0 +1,545 @@
+{
+  "name": "NEXUS · Content Factory v1.2 (HITL con n8n Forms)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "content-factory",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook · Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// SANITIZER · pattern Gemini\nconst body = $input.item.json.body || $input.item.json;\n\nfunction clean(text, max = 8000) {\n  if (!text) return '';\n  return String(text).replace(/[\\r\\n]+/g, ' ').replace(/\\s+/g, ' ').trim().substring(0, max);\n}\n\nconst tenant_slug = body.tenant_slug;\nif (!tenant_slug) throw new Error('tenant_slug es obligatorio');\n\nreturn {\n  json: {\n    tenant_slug,\n    topic: clean(body.topic) || 'tema por definir',\n    audience: clean(body.audience, 500) || 'general',\n    channels: body.channels || ['blog', 'social', 'email'],\n    language: body.language || 'es',\n    request_id: 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),\n    requested_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "2",
+      "name": "Sanitizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_task (tenant_id, workflow_name, status, input_payload) SELECT id, 'content_factory', 'running', $1::jsonb FROM tenants WHERE slug = $2 RETURNING id;",
+        "additionalFields": {
+          "queryParams": "={{ JSON.stringify($json) }},={{ $json.tenant_slug }}"
+        }
+      },
+      "id": "3",
+      "name": "PG · Create ai_task",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        600,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://dify-api:5001/v1/workflows/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.DIFY_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"inputs\": {\n    \"topic\": \"{{ $('Sanitizer').item.json.topic }}\",\n    \"audience\": \"{{ $('Sanitizer').item.json.audience }}\",\n    \"channels\": {{ JSON.stringify($('Sanitizer').item.json.channels) }},\n    \"language\": \"{{ $('Sanitizer').item.json.language }}\",\n    \"tenant_slug\": \"{{ $('Sanitizer').item.json.tenant_slug }}\"\n  },\n  \"response_mode\": \"blocking\",\n  \"user\": \"{{ $('Sanitizer').item.json.tenant_slug }}\"\n}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "4",
+      "name": "Dify · Content Factory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse outputs Dify\nconst outputs = $input.item.json.data?.outputs || {};\nconst sanitized = $('Sanitizer').item.json;\nconst taskRow = $('PG · Create ai_task').item.json;\n\nreturn {\n  json: {\n    task_id: taskRow.id,\n    tenant_slug: sanitized.tenant_slug,\n    request_id: sanitized.request_id,\n    topic: sanitized.topic,\n    article: outputs.article || '',\n    social_posts: outputs.social || [],\n    email_body: outputs.email || '',\n    hooks: outputs.hooks || [],\n    generated_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "5",
+      "name": "Parse Dify output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE ai_task SET status = 'awaiting_approval', output_payload = $1::jsonb, n8n_form_url = $2 WHERE id = $3;",
+        "additionalFields": {
+          "queryParams": "={{ JSON.stringify($('Parse Dify output').item.json) }},={{ $execution.resumeFormUrl || ('https://n8n.' + $env.DOMAIN + '/form/' + 'nexus-approval-form') }},={{ $('Parse Dify output').item.json.task_id }}"
+        }
+      },
+      "id": "7",
+      "name": "PG · Mark awaiting_approval",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1400,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution:8080/message/sendText/{{ $env.AINEXUS_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $env.OPERATOR_WHATSAPP }}\",\n  \"text\": \"\\ud83e\\udd16 *Aprobacion pendiente*\\n\\nCliente: {{ $('Parse Dify output').item.json.tenant_slug }}\\nTema: {{ $('Parse Dify output').item.json.topic }}\\n\\nAprobar o rechazar:\\n{{ $execution.resumeFormUrl }}\\n\\n_Link unico por tarea_\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "8",
+      "name": "Notify Operator (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        400
+      ],
+      "continueOnFail": true,
+      "notes": "NOTA: $execution.resumeFormUrl usa el webhookId estatico \"nexus-content-hitl\". URL determinista: https://n8n.DOMAIN/form/nexus-content-hitl. Si el link llega vacio, implementar patron TWO-WORKFLOW (ver CLAUDE.md Fase 2.5)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $('Wait · HITL Approval').item.json['Decision'] }}",
+              "rightValue": "Aprobar y publicar",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9",
+      "name": "IF · Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://postiz.{{ $env.DOMAIN }}/api/integrations/social/posts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.POSTIZ_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"posts\": {{ JSON.stringify($('Parse Dify output').item.json.social_posts) }},\n  \"tenant\": \"{{ $('Parse Dify output').item.json.tenant_slug }}\"\n}",
+        "options": {}
+      },
+      "id": "10",
+      "name": "Postiz · Schedule posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        200
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://email.{{ $env.DOMAIN }}/api/campaigns",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"name\": \"NEXUS-{{ $('Parse Dify output').item.json.request_id }}\",\n  \"subject\": \"{{ $('Parse Dify output').item.json.topic }}\",\n  \"body\": {{ JSON.stringify($('Parse Dify output').item.json.email_body) }},\n  \"content_type\": \"markdown\",\n  \"type\": \"regular\",\n  \"lists\": [1]\n}"
+      },
+      "id": "11",
+      "name": "Listmonk · Create campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        350
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE ai_task SET status = 'published', published_at = NOW(), approver_user = $1 WHERE id = $2;",
+        "additionalFields": {
+          "queryParams": "={{ $('Wait · HITL Approval').item.json['Operador que aprueba'] }},={{ $('Parse Dify output').item.json.task_id }}"
+        }
+      },
+      "id": "12",
+      "name": "PG · Mark published",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2000,
+        275
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO tutor_corrections (tenant_id, workflow_name, original_output, corrected_output, correction_reason) SELECT t.id, 'content_factory', $1::text, '', $2::text FROM tenants t WHERE t.slug = $3 RETURNING id;",
+        "additionalFields": {
+          "queryParams": "={{ JSON.stringify($('Parse Dify output').item.json) }},={{ $('Wait · HITL Approval').item.json['Feedback / Correcciones (si rechaza)'] }},={{ $('Parse Dify output').item.json.tenant_slug }}"
+        }
+      },
+      "id": "13",
+      "name": "PG · Tutor correction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1800,
+        500
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE ai_task SET status = 'rejected', approval_notes = $1, approver_user = $2 WHERE id = $3;",
+        "additionalFields": {
+          "queryParams": "={{ $('Wait · HITL Approval').item.json['Feedback / Correcciones (si rechaza)'] }},={{ $('Wait · HITL Approval').item.json['Operador que aprueba'] }},={{ $('Parse Dify output').item.json.task_id }}"
+        }
+      },
+      "id": "14",
+      "name": "PG · Mark rejected",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2000,
+        500
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "nexus-pg-core",
+          "name": "Nexus Postgres Core"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Aprobacion de Contenido · NEXUS",
+        "formDescription": "=### Tenant: {{ $('Parse Dify output').item.json.tenant_slug }}\n**Task:** {{ $('Parse Dify output').item.json.task_id }}\n**Tema:** {{ $('Parse Dify output').item.json.topic }}\n\n---\n{{ $('Parse Dify output').item.json.article }}",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Aprobar y publicar"
+                  },
+                  {
+                    "option": "Rechazar (con feedback)"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Feedback si rechaza",
+              "fieldType": "textarea",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Operador",
+              "fieldType": "text",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "respondWith": "showText",
+              "responseText": "Respuesta registrada correctamente."
+            }
+          }
+        }
+      },
+      "id": "6",
+      "name": "Wait · HITL Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        300
+      ],
+      "webhookId": "nexus-content-hitl"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\": true, \"received\": true, \"task_id\": \"{{ $('PG \\u00b7 Create ai_task').item.json.id }}\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "15",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        600,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook · Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sanitizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitizer": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "PG · Create ai_task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG · Create ai_task": {
+      "main": [
+        [
+          {
+            "node": "Dify · Content Factory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dify · Content Factory": {
+      "main": [
+        [
+          {
+            "node": "Parse Dify output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Dify output": {
+      "main": [
+        [
+          {
+            "node": "PG · Mark awaiting_approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PG · Mark awaiting_approval": {
+      "main": [
+        [
+          {
+            "node": "Notify Operator (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Operator (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Wait · HITL Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait · HITL Approval": {
+      "main": [
+        [
+          {
+            "node": "IF · Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF · Approved?": {
+      "main": [
+        [
+          {
+            "node": "Postiz · Schedule posts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Listmonk · Create campaign",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PG · Tutor correction",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "PG · Mark rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postiz · Schedule posts": {
+      "main": [
+        [
+          {
+            "node": "PG · Mark published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listmonk · Create campaign": {
+      "main": [
+        [
+          {
+            "node": "PG · Mark published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "timezone": "America/Mexico_City"
+  },
+  "tags": [
+    {
+      "name": "nexus-supreme-v1.2"
+    },
+    {
+      "name": "hitl-real"
+    },
+    {
+      "name": "n8n-forms"
+    }
+  ]
+}
