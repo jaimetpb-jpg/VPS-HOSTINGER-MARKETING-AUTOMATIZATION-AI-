@@ -257,6 +257,12 @@ services:
     image: langgenius/dify-api:0.13.2
     container_name: nexus-dify-worker
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/health')\" 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     environment:
       MODE: worker
       LOG_LEVEL: INFO
@@ -448,6 +454,7 @@ services:
       LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
       LISTMONK_ADMIN_PASS: ${LISTMONK_ADMIN_PASS}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      N8N_USER_MANAGEMENT_JWT_SECRET: ${N8N_USER_MGMT_JWT_SECRET}  # fix Kimi M6
     depends_on:
       - n8n-main
     networks:
