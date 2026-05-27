@@ -1,3 +1,4 @@
 *.zip
 .env
 .env.backup*
+.env.credentials-readme.txt
