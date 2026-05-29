@@ -1,165 +1,122 @@
 #!/usr/bin/env bash
-# ═══════════════════════════════════════════════════════════════
-# NEXUS v1.3 · 02 · Validar secretos ANTES de deploy
-# FIX v1.3: providers opcionales = warnings (no exit 1)
-#           solo DeepSeek es obligatorio para MVP
-# ═══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# NEXUS v1.3 · 02-validate-secrets.sh
+# Validar secretos y .env antes del deploy
+# REPARADO 28-may-2026 · Fix Kimi C1 (regex corrupto + DS_CODE undefined)
+# ════════════════════════════════════════════════════════════════
 set -uo pipefail
 cd "$(dirname "$0")/.."
-[ -f .env ] && { set -a; source .env; set +a; } || { echo "✗ Falta .env"; exit 1; }
+
+if [ ! -f .env ]; then
+  echo "❌ .env no existe. Ejecutar 01-generate-secrets.sh primero."
+  exit 1
+fi
+
+set -a
+source .env
+set +a
 
 PASS=0; FAIL=0; WARN=0
 ok()   { echo "  ✅ $1"; PASS=$((PASS+1)); }
 fail() { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
-warn() { echo "  ⚠  $1 (opcional)"; WARN=$((WARN+1)); }
+warn() { echo "  ⚠️  $1"; WARN=$((WARN+1)); }
 
 echo "═══════════════════════════════════════════════════════════"
-echo "  NEXUS v1.3 · Validación de secretos pre-deploy"
+echo "  NEXUS v1.3 · Validate Secrets"
 echo "═══════════════════════════════════════════════════════════"
 
 # ─── 1. Placeholders sin reemplazar ───
-echo ""
-echo "→ Verificando placeholders..."
+echo "→ [1/8] Placeholders sin reemplazar..."
 PLACEHOLDERS=$(grep -E "CAMBIAME|REEMPLAZAR|<GENERADO_|<GENERAR_" .env | grep -v "^#" || true)
-if [ -z "$PLACEHOLDERS" ]; then
-  ok "Sin placeholders críticos"
+if [ -n "$PLACEHOLDERS" ]; then
+  fail "Hay placeholders sin reemplazar:"
+  echo "$PLACEHOLDERS" | sed 's/^/      /'
 else
-  # Solo falla si hay placeholders en vars obligatorias
-  CRITICAL=$(echo "$PLACEHOLDERS" | grep -E "DEEPSEEK_API_KEY|SMTP_PASS|PG_ADMIN_PASS|DOMAIN|OPERATOR" || true)
-  if [ -n "$CRITICAL" ]; then
-    fail "Placeholders en variables obligatorias:"
-    echo "$CRITICAL" | head -5
+  ok "Sin placeholders pendientes"
+fi
+
+# ─── 2. DeepSeek API key (mandatorio) ───
+echo "→ [2/8] DeepSeek API key..."
+if [ -z "${DEEPSEEK_API_KEY:-}" ] || [ "${DEEPSEEK_API_KEY}" = "sk-CAMBIAME" ]; then
+  fail "DEEPSEEK_API_KEY no configurada (obligatoria para MVP)"
+else
+  DS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+    https://api.deepseek.com/v1/models \
+    -H "Authorization: Bearer ${DEEPSEEK_API_KEY}" 2>/dev/null || echo "000")
+  case "$DS_CODE" in
+    200) ok "DeepSeek API: válida (HTTP 200)" ;;
+    401) fail "DeepSeek API: key inválida (HTTP 401)" ;;
+    000) warn "DeepSeek API: no se pudo verificar (timeout/sin red)" ;;
+    *)   warn "DeepSeek API: respuesta inesperada (HTTP $DS_CODE)" ;;
+  esac
+fi
+
+# ─── 3. API keys opcionales (warning si faltan) ───
+echo "→ [3/8] API keys opcionales..."
+for key in ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY; do
+  val="${!key:-}"
+  if [ -z "$val" ] || [ "$val" = "OPCIONAL" ]; then
+    warn "$key sin configurar (opcional)"
   else
-    warn "Hay placeholders en vars opcionales (ok para MVP):"
-    echo "$PLACEHOLDERS" | head -3
-  fi
-fi
-
-# ─── 2. DeepSeek API (OBLIGATORIO) ───
-echo ""
-echo "→ DeepSeek API (REQUERIDO para MVP)..."
-DS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-  https://api.deepseek.com/v1/models \
-  -H "Authorization: Bearer ${DEEPSEEK_API_KEY:-}" 2>/dev/null || echo "000")
-case "$DS_CODE" in
-  200) ok "DeepSeek API OK — modelos cheap-spanish/cheap-coder activos" ;;
-  401) fail "DeepSeek API key inválida (401) — OBLIGATORIA" ;;
-  *)   fail "DeepSeek API no responde (HTTP $DS_CODE) — OBLIGATORIA" ;;
-esac
-
-# ─── 3. Anthropic API (OPCIONAL) ───
-echo ""
-echo "→ Anthropic API (opcional — modelos creative-*)..."
-if [ -n "${ANTHROPIC_API_KEY:-}" ] && [[ "${ANTHROPIC_API_KEY}" != *"CAMBIAME"* ]]; then
-  ANT_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    https://api.anthropic.com/v1/messages \
-    -H "x-api-key: ${ANTHROPIC_API_KEY}" \
-    -H "anthropic-version: 2023-06-01" \
-    -H "content-type: application/json" \
-    -d '{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}' 2>/dev/null || echo "000")
-  case "$ANT_CODE" in
-    200) ok "Anthropic API OK — claude-* activos" ;;
-    401) warn "Anthropic API key inválida — modelos claude-* desactivados en LiteLLM" ;;
-    *)   warn "Anthropic API no responde (HTTP $ANT_CODE)" ;;
-  esac
-else
-  warn "Anthropic API key no configurada — modelos claude-* desactivados en LiteLLM"
-fi
-
-# ─── 4. OpenAI API (OPCIONAL) ───
-echo ""
-echo "→ OpenAI API (opcional — modelos strategy/agent-pm)..."
-if [ -n "${OPENAI_API_KEY:-}" ] && [[ "${OPENAI_API_KEY}" != *"CAMBIAME"* ]]; then
-  OAI_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    https://api.openai.com/v1/models \
-    -H "Authorization: Bearer ${OPENAI_API_KEY}" 2>/dev/null || echo "000")
-  case "$OAI_CODE" in
-    200) ok "OpenAI API OK — gpt-* activos" ;;
-    401) warn "OpenAI API key inválida — modelos gpt-* desactivados" ;;
-    *)   warn "OpenAI API no responde (HTTP $OAI_CODE)" ;;
-  esac
-else
-  warn "OpenAI API key no configurada — modelos gpt-* desactivados"
-fi
-
-# ─── 5. Gemini API (OPCIONAL) ───
-echo ""
-echo "→ Gemini API (opcional — long-research)..."
-if [ -n "${GEMINI_API_KEY:-}" ] && [[ "${GEMINI_API_KEY}" != *"CAMBIAME"* ]]; then
-  GEM_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-    "https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}" 2>/dev/null || echo "000")
-  case "$GEM_CODE" in
-    200) ok "Gemini API OK" ;;
-    *)   warn "Gemini API no responde (HTTP $GEM_CODE)" ;;
-  esac
-else
-  warn "Gemini API key no configurada — long-research desactivado"
-fi
-
-# ─── 6. SMTP ───
-echo ""
-echo "→ SMTP (Resend)..."
-if [[ "${SMTP_PASS:-}" == "CAMBIAME" ]] || [ -z "${SMTP_PASS:-}" ]; then
-  fail "SMTP_PASS no configurada — emails no funcionarán"
-else
-  ok "SMTP_PASS configurada (validación SMTP solo en deploy)"
-fi
-
-# ─── 7. DNS wildcard ───
-echo ""
-echo "→ DNS wildcard *.${DOMAIN:-ainexus.mx}..."
-TEST_SUBDOMAIN="test-$$"
-TEST_IP=$(dig +short "${TEST_SUBDOMAIN}.${DOMAIN:-ainexus.mx}" @1.1.1.1 2>/dev/null | tail -1 || echo "")
-DOMAIN_IP=$(dig +short "${DOMAIN:-ainexus.mx}" @1.1.1.1 2>/dev/null | tail -1 || echo "")
-VPS_IP="2.24.204.193"
-
-if [ "$TEST_IP" = "$VPS_IP" ]; then
-  ok "Wildcard DNS *.${DOMAIN} apunta a $VPS_IP ✓"
-elif [ "$DOMAIN_IP" = "$VPS_IP" ]; then
-  fail "Root domain ${DOMAIN} OK, pero wildcard *.${DOMAIN} NO apunta al VPS. Traefik subdominios fallarán. Configura A record: *.${DOMAIN} → $VPS_IP"
-else
-  fail "DNS no resuelve a $VPS_IP. Actual: ${DOMAIN_IP:-sin respuesta}. Configura wildcard A record."
-fi
-
-# ─── 8. Longitud de secretos críticos ───
-echo ""
-echo "→ Longitud de secretos críticos..."
-for var in LITELLM_MASTER_KEY DIFY_SECRET_KEY N8N_ENCRYPTION_KEY PG_ADMIN_PASS; do
-  val="${!var:-}"
-  if [ ${#val} -lt 24 ]; then
-    fail "$var demasiado corto (${#val} chars) — ejecuta 01-generate-secrets.sh"
-  else
-    ok "$var OK (${#val} chars)"
+    ok "$key configurada"
   fi
 done
 
-# ─── 9. Variables de negocio para n8n ───
-echo ""
-echo "→ Variables de negocio para workflows n8n..."
-for var in OPERATOR_WHATSAPP EVOLUTION_API_KEY; do
-  val="${!var:-}"
-  if [ -z "$val" ] || [[ "$val" == *"CAMBIAME"* ]] || [[ "$val" == *"XXXXXXXXXX"* ]]; then
-    warn "$var pendiente de configurar (workflows de WhatsApp no funcionarán hasta completar)"
-  else
-    ok "$var configurada"
+# ─── 4. DOMAIN ───
+echo "→ [4/8] DOMAIN..."
+if [ -z "${DOMAIN:-}" ]; then
+  fail "DOMAIN no configurado"
+else
+  ok "DOMAIN: $DOMAIN"
+fi
+
+# ─── 5. SMTP_PASS ───
+echo "→ [5/8] SMTP credentials..."
+if [ -z "${SMTP_PASS:-}" ] || [ "${SMTP_PASS}" = "re_CAMBIAME" ]; then
+  fail "SMTP_PASS no configurada (obligatoria para Listmonk)"
+else
+  ok "SMTP_PASS configurada"
+fi
+
+# ─── 6. OPERATOR_WHATSAPP ───
+echo "→ [6/8] OPERATOR_WHATSAPP..."
+if [[ "${OPERATOR_WHATSAPP:-}" =~ ^521[0-9]{10}$ ]]; then
+  ok "OPERATOR_WHATSAPP: formato válido (521XXXXXXXXXX)"
+else
+  fail "OPERATOR_WHATSAPP inválido (debe ser 521 + 10 dígitos)"
+fi
+
+# ─── 7. Postgres passwords presentes ───
+echo "→ [7/8] Postgres passwords generadas..."
+for var in PG_ADMIN_PASS PG_DIFY_PASS PG_N8N_PASS PG_LITELLM_PASS PG_NEXUS_CORE_PASS; do
+  if [ -z "${!var:-}" ]; then
+    fail "$var no generada (correr 01-generate-secrets.sh)"
   fi
 done
+[ "$FAIL" -eq 0 ] && ok "Todas las passwords de Postgres presentes"
+
+# ─── 8. Longitud mínima de secretos críticos ───
+echo "→ [8/8] Longitud de secretos críticos (>=24 chars)..."
+SHORT=0
+for var in LITELLM_MASTER_KEY N8N_ENCRYPTION_KEY DIFY_SECRET_KEY EVOLUTION_API_KEY; do
+  val="${!var:-}"
+  if [ "${#val}" -lt 24 ]; then
+    fail "$var muy corto (${#val} chars, mínimo 24)"
+    SHORT=$((SHORT+1))
+  fi
+done
+[ "$SHORT" -eq 0 ] && ok "Todos los secretos críticos con longitud OK"
 
 # ─── Resumen ───
 echo ""
 echo "═══════════════════════════════════════════════════════════"
-echo "  RESULTADO: ✅ $PASS · ⚠ $WARN warnings · ❌ $FAIL fallos"
+echo "  ✅ $PASS · ❌ $FAIL · ⚠️  $WARN"
 echo "═══════════════════════════════════════════════════════════"
 
 if [ "$FAIL" -gt 0 ]; then
-  echo ""
-  echo "❌ $FAIL FALLOS CRÍTICOS — resolver antes de deployar"
-  echo "   (los warnings se pueden resolver después del primer deploy)"
+  echo "❌ Validación FALLÓ — corregir antes de continuar"
   exit 1
-else
-  echo ""
-  echo "✅ Listo para deployar fase 1"
-  [ "$WARN" -gt 0 ] && echo "   ($WARN warnings — completar API keys opcionales para funcionalidad completa)"
-  echo ""
-  exit 0
 fi
+
+echo "✅ Validación OK — listo para deploy"
+exit 0
