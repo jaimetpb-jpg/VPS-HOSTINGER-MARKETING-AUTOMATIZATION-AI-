@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NEXUS Lead Score",
+  "type": "object",
+  "required": [
+    "score",
+    "tier",
+    "intent",
+    "reason",
+    "recommended_action",
+    "suggested_reply"
+  ],
+  "properties": {
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "HOT",
+        "WARM",
+        "COLD"
+      ]
+    },
+    "intent": {
+      "type": "string"
+    },
+    "pain_point": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "recommended_action": {
+      "type": "string"
+    },
+    "suggested_reply": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

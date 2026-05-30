@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NEXUS AI Task",
+  "type": "object",
+  "required": [
+    "workflow_name",
+    "status"
+  ],
+  "properties": {
+    "workflow_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "awaiting_approval",
+        "approved",
+        "rejected",
+        "done",
+        "error"
+      ]
+    },
+    "input_payload": {
+      "type": "object"
+    },
+    "output_payload": {
+      "type": "object"
+    },
+    "error": {
+      "type": "string"
+    }
+  }
+}

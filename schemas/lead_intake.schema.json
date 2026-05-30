@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NEXUS Lead Intake",
+  "type": "object",
+  "required": [
+    "name",
+    "phone",
+    "message"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "company": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string",
+      "minLength": 8
+    },
+    "email": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string"
+    },
+    "tenant_id": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

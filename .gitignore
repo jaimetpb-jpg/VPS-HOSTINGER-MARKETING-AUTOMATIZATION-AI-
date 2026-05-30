@@ -2,3 +2,7 @@
 .env
 .env.backup*
 .env.credentials-readme.txt
+*.local
+n8n/workflows/*.rendered.json
+__pycache__/
+*.pyc

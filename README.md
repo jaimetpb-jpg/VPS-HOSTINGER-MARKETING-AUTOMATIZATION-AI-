@@ -1,158 +1,72 @@
-# NEXUS SUPREME v1.3
-## Automatización de Agencia de Marketing Digital con AI
+# NEXUS Lead-to-Revenue Engine v1.0
+## n8n Cloud/API Edition · Audit Ready
 
-> Sistema completo de automatización de marketing con AI y agentes autónomos.
-> MVP: Lead → Dify califica → Postgres → WhatsApp → operador → log.
+Proyecto auditable para automatización de marketing con IA usando n8n por API directa, sin depender del VPS Hostinger self-hosted.
 
----
+## Objetivo MVP
 
-## Estado actual
+Lead entra → normalización → dedupe/log → Dify califica → n8n enruta → WhatsApp operador → aprobación humana → respuesta/log/reporte.
 
-- **Versión:** v1.3 (28 mayo 2026)
-- **Branch productiva:** `deploy-v1.3`
-- **VPS:** Hostinger KVM8 · 32GB RAM · 200GB SSD · Ubuntu 24
-- **Dominio:** ainexus.mx (wildcard DNS)
-- **Equipo Multi-AI:** 5 agentes activos (Codex, Kimi, Grok, Gemini, Claude Code)
+## Principios anti-Frankenstein
 
----
+1. Un workflow principal.
+2. Módulos opcionales no bloqueantes.
+3. Ningún secreto hardcodeado.
+4. Webhook responde temprano.
+5. IA entrega JSON estructurado.
+6. Postgres/Supabase es fuente de verdad.
+7. Human gate donde hay riesgo comercial.
+8. Error memory para aprender de fallos.
+9. Todo cambio pasa por validación antes de deploy.
+10. Codex implementa, Kimi audita, Claude Code solo ejecuta si hace falta.
 
-## Stack tecnológico
+## Contenido
 
-```
-Phase 1 — Core AI:
-  Traefik v3.1 + Postgres 16 + PgBouncer + Redis 7.4 + Qdrant v1.12
-  LiteLLM v1.52 + Dify 0.13.2 + n8n 1.70.0 (queue mode, main + 2 workers)
-  Uptime Kuma
-
-Phase 2 — Marketing:
-  Evolution API v2.2 + Listmonk v4.1 + Postiz v2.11.5
-
-Phase 3 — Observabilidad:
-  Plausible CE v2.1 + Beszel 0.9.1 + Restic backups
-```
-
----
-
-## Estructura del repositorio
-
-```
-.
-├── README.md                          ← este archivo
-├── NEXUS_AI_TEAM_RULES.md             ← reglas del equipo Multi-AI
-├── DECISIONES.md                      ← registro de decisiones técnicas
-├── QUICKSTART.md                      ← arranque hora-por-hora
-├── CHECKLIST_GATE.md                  ← gate pre-deploy
-├── CLAUDE_CODE_INSTRUCCIONES.md       ← instrucciones VPS
-├── CODEX_INSTRUCCIONES.md             ← instrucciones cirugía local
-│
-├── .env.example                       ← spec de variables (con markers)
-├── .env.future.example                ← variables para fases futuras
-├── .gitignore                         ← protección contra leaks
-│
-├── agents/                            ← definición de los 5 agentes AI
-│   ├── CODEX_AGENT.md
-│   ├── KIMI_AGENT.md                  ← auditor líder (GO/NO GO final)
-│   ├── GROK_AGENT.md                  ← auditor de seguridad
-│   ├── GEMINI_AGENT.md                ← auditor de configuración
-│   └── CLAUDE_CODE_AGENT.md           ← ejecutor único del VPS
-│
-├── scripts/                           ← 14 scripts del deploy
-│   ├── 00-prepare-vps.sh
-│   ├── 01-generate-secrets.sh
-│   ├── 02-validate-secrets.sh         ← REPARADO v1.3
-│   ├── 03-deploy-postgres-first.sh
-│   ├── 04-init-databases.sh
-│   ├── 05-deploy-phase-1.sh
-│   ├── 06-deploy-phase-2.sh
-│   ├── 07-deploy-phase-3.sh
-│   ├── 08-backup-restic.sh
-│   ├── 09-export-credentials.sh
-│   ├── 99-smoke-test.sh
-│   ├── check-env-drift.sh
-│   ├── preflight-hostinger.sh
-│   ├── rollback-snapshot.sh
-│   └── pre-commit-validate.sh         ← gate automático pre-push
-│
-├── skills/                            ← orquestador de skills
-│   └── skills-runner.sh
-│
-├── configs/                           ← configs runtime (gitkeep)
-│   └── .gitkeep
-│
-├── phase-1-core/
-│   ├── docker-compose.yml
-│   └── litellm-config.yaml
-├── phase-2-marketing/
-│   └── docker-compose.yml
-├── phase-3-observability/
-│   └── docker-compose.yml
-│
-├── db-init/
-│   ├── 00-bootstrap.sql
-│   └── 01-nexus-core-schema.sql
-│
-└── workflows/
-    ├── n8n-lead-qualifier-v1.3.json
-    ├── n8n-whatsapp-concierge-v1.3.json
-    └── n8n-content-factory-v1.3.json
+```text
+docs/ARCHITECTURE.md
+docs/AUDIT_BRIEF.md
+docs/IMPLEMENTATION_PLAN.md
+docs/CODEX_TASK.md
+docs/CLAUDE_TASK.md
+docs/KIMI_AUDIT_TASK.md
+schemas/*.json
+prompts/dify/*.md
+n8n/workflows/nexus_lead_to_revenue_v1.template.json
+n8n/workflows/test_payload.json
+scripts/*.py
 ```
 
----
+## Uso
 
-## Equipo Multi-AI
-
-```
-James (humano · orquestador final)
-  │
-  ├─ Codex      → genera código local + pre-commit
-  │              ↓
-  ├─ Kimi       → auditor LÍDER (GO/NO GO final)
-  │   Grok      → auditor seguridad (paralelo)
-  │   Gemini    → auditor config/logs (paralelo)
-  │              ↓
-  └─ Claude Code → único ejecutor del VPS
-
-Backup (si falla 2x): Cursor + Antigravity + JetBrains
+```bash
+cp .env.example .env
+python scripts/validate_project.py
+python scripts/render_workflow.py
+python scripts/n8n_api_deploy.py --mode dry-run
+python scripts/n8n_api_deploy.py --mode create
+python scripts/smoke_test_webhook.py
+python scripts/go_nogo.py
 ```
 
-Ver `NEXUS_AI_TEAM_RULES.md` para reglas completas.
+## Modo mock de Data API
 
----
+Para arrancar rápido sin Supabase/PostgREST listo, deja `DATA_API_MODE=mock` en `.env`.
+El workflow mantiene `HTTP · Upsert Lead` y `HTTP · Log ai_task` como nodos no bloqueantes:
+si la persistencia falla o apunta al mock, Dify y WhatsApp pueden seguir corriendo.
 
-## Arranque rápido
+El archivo renderizado `n8n/workflows/nexus_lead_to_revenue_v1.rendered.json` es local y está ignorado por Git
+porque puede contener keys reales. Para import manual:
 
-Ver `QUICKSTART.md` para arranque hora-por-hora.
+1. Completa `.env` con credenciales reales de n8n, Dify y Evolution API.
+2. Ejecuta `python scripts/render_workflow.py`.
+3. En n8n: New Workflow → Import from file → selecciona el `.rendered.json`.
+4. Revisa credenciales/headers antes de activar.
+5. Activa solo después del smoke test.
 
-Resumen:
-1. Codex genera/edita código → `pre-commit-validate.sh` → push
-2. Kimi + Grok + Gemini auditan en paralelo
-3. Kimi decide GO/NO GO
-4. James aprueba (60s gate)
-5. Claude Code ejecuta deploy en VPS
-6. Smoke test real → MVP activo
+## Estado
 
----
-
-## Fases del deploy
-
-| Fase | Servicios | Script |
-|---|---|---|
-| 0 | Preparar VPS | `00-prepare-vps.sh` |
-| 1 | Postgres + Redis + Qdrant + LiteLLM + Dify + n8n | `05-deploy-phase-1.sh` |
-| 2 | Evolution + Listmonk + Postiz | `06-deploy-phase-2.sh` |
-| 3 | Plausible + Beszel + backups | `07-deploy-phase-3.sh` |
-
----
-
-## Documentación de soporte
-
-- `NEXUS_AI_TEAM_RULES.md` — reglas del equipo
-- `DECISIONES.md` — registro de decisiones técnicas
-- `CHECKLIST_GATE.md` — gate de validación pre-deploy
-- `CLAUDE_CODE_INSTRUCCIONES.md` — pasos en el VPS
-- `CODEX_INSTRUCCIONES.md` — cirugía de código local
-- `agents/*.md` — definición operativa de cada AI
-
----
-
-*NEXUS SUPREME v1.3 · 28 mayo 2026*
+Audit-ready. No production-ready hasta que:
+- n8n credentials estén creadas.
+- Dify app key esté probada.
+- Evolution instance esté conectada.
+- Webhook test real devuelva HTTP 200 y WhatsApp llegue.
