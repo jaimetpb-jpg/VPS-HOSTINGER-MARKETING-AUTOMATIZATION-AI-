@@ -5,7 +5,10 @@ from urllib import request,error
 ROOT=Path(__file__).resolve().parents[1]
 def envload():
     d={}
-    for line in (ROOT/'.env').read_text(encoding='utf-8').splitlines():
+    p=ROOT/'.env'
+    if not p.exists():
+        return d
+    for line in p.read_text(encoding='utf-8').splitlines():
         if not line.strip() or line.strip().startswith('#') or '=' not in line: continue
         k,v=line.split('=',1); d[k]=v
     return d
