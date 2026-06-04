@@ -1,0 +1,29 @@
+﻿NEXUS VPS SNAPSHOT — 2026-06-04 13:37
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\compose | 
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\logs | 
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts | 
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\docker_ps.txt | 7643
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\env_redacted.txt | 3491
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\git_diff_vps_vs_origin.txt | 13927
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\n8n_workflows.json | 36108
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\nexus-snapshot.tar.gz | 19994
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\phase-1-core-docker-compose.yml | 17414
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\phase-2-marketing-docker-compose.yml | 5294
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\phase-3-observability-docker-compose.yml | 3452
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\phase2_and_db_logs.txt | 19511
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\00-prepare-vps.sh | 3857
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\01-generate-secrets.sh | 4644
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\02-validate-secrets.sh | 4792
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\03-deploy-postgres-first.sh | 909
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\04-init-databases.sh | 1618
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\05-deploy-phase-1.sh | 5106
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\06-deploy-phase-2.sh | 1621
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\07-deploy-phase-3.sh | 983
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\08-backup-restic.sh | 4543
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\09-export-credentials.sh | 1789
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\99-smoke-test.sh | 5139
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\check-env-drift.sh | 472
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\pre-commit-validate.sh | 9737
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\preflight-hostinger.sh | 5941
+C:\Users\Dell\nexus-project\01_VPS_CURRENT_STATE\scripts\rollback-snapshot.sh | 1791
+

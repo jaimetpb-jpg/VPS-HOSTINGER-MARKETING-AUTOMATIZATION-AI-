@@ -1,0 +1,295 @@
+== branch ==
+* deploy-v1.3 b356382 [origin/deploy-v1.3] fix(critical): C1+C2+C3 from Kimi audit + v1.3 sync package
+  main        502b9ef [origin/main] Add files via upload
+== status ==
+On branch deploy-v1.3
+Your branch is up to date with 'origin/deploy-v1.3'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   phase-1-core/docker-compose.yml
+	modified:   phase-2-marketing/docker-compose.yml
+	modified:   scripts/00-prepare-vps.sh
+	modified:   scripts/01-generate-secrets.sh
+	modified:   scripts/02-validate-secrets.sh
+	modified:   scripts/03-deploy-postgres-first.sh
+	modified:   scripts/04-init-databases.sh
+	modified:   scripts/05-deploy-phase-1.sh
+	modified:   scripts/06-deploy-phase-2.sh
+	modified:   scripts/07-deploy-phase-3.sh
+	modified:   scripts/08-backup-restic.sh
+	modified:   scripts/09-export-credentials.sh
+	modified:   scripts/99-smoke-test.sh
+	modified:   scripts/check-env-drift.sh
+	modified:   scripts/pre-commit-validate.sh
+	modified:   scripts/preflight-hostinger.sh
+	modified:   scripts/rollback-snapshot.sh
+
+no changes added to commit (use "git add" and/or "git commit -a")
+== diff vs origin/deploy-v1.3 ==
+diff --git a/phase-1-core/docker-compose.yml b/phase-1-core/docker-compose.yml
+index ffc98b7..51fa118 100644
+--- a/phase-1-core/docker-compose.yml
++++ b/phase-1-core/docker-compose.yml
+@@ -41,44 +41,46 @@ volumes:
+     name: nexus_uptimekuma_data
+ 
+ services:
+-  # ────────── TRAEFIK ──────────
+-  traefik:
+-    image: traefik:v3.1
+-    container_name: nexus-traefik
+-    restart: unless-stopped
+-    command:
+-      - "--api.dashboard=true"
+-      - "--providers.docker=true"
+-      - "--providers.docker.exposedbydefault=false"
+-      - "--providers.docker.network=nexus-public"
+-      - "--providers.file.directory=/etc/traefik/dynamic"
+-      - "--providers.file.watch=true"
+-      - "--entrypoints.web.address=:80"
+-      - "--entrypoints.websecure.address=:443"
+-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+-      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
+-      - "--certificatesresolvers.le.acme.storage=/certs/acme.json"
+-      - "--certificatesresolvers.le.acme.tlschallenge=true"
+-      # STAGING (descomentar para primeros deploys y evitar rate limit LE):
+-      # - "--certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+-      - "--log.level=INFO"
+-    ports:
+-      - "80:80"
+-      - "443:443"
+-    volumes:
+-      - /var/run/docker.sock:/var/run/docker.sock:ro
+-      - traefik_certs:/certs
+-      - ../configs/traefik-basic-auth.yml:/etc/traefik/dynamic/auth.yml:ro
+-    networks:
+-      - nexus-public
+-    labels:
+-      - "traefik.enable=true"
+-      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+-      - "traefik.http.routers.dashboard.service=api@internal"
+-      - "traefik.http.routers.dashboard.tls.certresolver=le"
+-      - "traefik.http.routers.dashboard.middlewares=basic-auth@file"
+-
++#DISABLED   # ────────── TRAEFIK ──────────
++#DISABLED   traefik:
++#DISABLED     image: traefik:v3.1
++#DISABLED     container_name: nexus-traefik
++#DISABLED     restart: unless-stopped
++#DISABLED     command:
++#DISABLED       - "--api.dashboard=true"
++#DISABLED       - "--providers.docker=true"
++#DISABLED       - "--providers.docker.exposedbydefault=false"
++#DISABLED       - "--providers.docker.network=nexus-public"
++#DISABLED       - "--providers.file.directory=/etc/traefik/dynamic"
++#DISABLED       - "--providers.file.watch=true"
++#DISABLED       - "--entrypoints.web.address=:80"
++#DISABLED       - "--entrypoints.websecure.address=:443"
++#DISABLED       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
++#DISABLED       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
++#DISABLED       - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
++#DISABLED       - "--certificatesresolvers.le.acme.storage=/certs/acme.json"
++#DISABLED       - "--certificatesresolvers.le.acme.tlschallenge=true"
++#DISABLED       # STAGING (descomentar para primeros deploys y evitar rate limit LE):
++#DISABLED       # - "--certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
++#DISABLED       - "--log.level=INFO"
++#DISABLED     ports:
++#DISABLED       - "80:80"
++#DISABLED       - "443:443"
++#DISABLED     volumes:
++#DISABLED       - /var/run/docker.sock:/var/run/docker.sock:ro
++#DISABLED       - traefik_certs:/certs
++#DISABLED       - ../configs/traefik-basic-auth.yml:/etc/traefik/dynamic/auth.yml:ro
++#DISABLED     environment:
++#DISABLED       - DOCKER_API_VERSION=1.45
++#DISABLED     networks:
++#DISABLED       - nexus-public
++#DISABLED     labels:
++#DISABLED       - "traefik.enable=true"
++#DISABLED       - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
++#DISABLED       - "traefik.http.routers.dashboard.service=api@internal"
++#DISABLED       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
++#DISABLED       - "traefik.http.routers.dashboard.middlewares=basic-auth@file"
++#DISABLED 
+   # ────────── POSTGRES ──────────
+   postgres:
+     image: postgres:16.6-alpine
+@@ -110,7 +112,7 @@ services:
+   # ────────── PGBOUNCER · pool de conexiones (Kimi opportunity K) ──────────
+   # 50MB · maneja 1000+ conexiones cliente con solo 50 al backend
+   pgbouncer:
+-    image: edoburu/pgbouncer:1.23.1
++    image: edoburu/pgbouncer:latest
+     container_name: nexus-pgbouncer
+     restart: unless-stopped
+     environment:
+@@ -196,7 +198,7 @@ services:
+       - "traefik.enable=true"
+       - "traefik.http.routers.litellm.rule=Host(`llm.${DOMAIN}`)"
+       - "traefik.http.routers.litellm.entrypoints=websecure"
+-      - "traefik.http.routers.litellm.tls.certresolver=le"
++      - "traefik.http.routers.litellm.tls.certresolver=letsencrypt"
+       - "traefik.http.services.litellm.loadbalancer.server.port=4000"
+ 
+   # ────────── DIFY API · SIN SANDBOX (Bug #4 fix) ──────────
+@@ -231,7 +233,7 @@ services:
+       OPENDAL_SCHEME: fs
+       OPENDAL_FS_ROOT: /app/storage
+       # CODE EXECUTION DESACTIVADO (sin sandbox)
+-      CODE_EXECUTION_ENDPOINT: ""
++      CODE_EXECUTION_ENDPOINT: "http://127.0.0.1:8194"
+       OPENAI_API_BASE: http://litellm:4000/v1
+     volumes:
+       - dify_storage:/app/storage
+@@ -249,7 +251,7 @@ services:
+       - "traefik.enable=true"
+       - "traefik.http.routers.dify-api.rule=Host(`dify.${DOMAIN}`) && (PathPrefix(`/console/api`) || PathPrefix(`/api`) || PathPrefix(`/v1`) || PathPrefix(`/files`))"
+       - "traefik.http.routers.dify-api.entrypoints=websecure"
+-      - "traefik.http.routers.dify-api.tls.certresolver=le"
++      - "traefik.http.routers.dify-api.tls.certresolver=letsencrypt"
+       - "traefik.http.routers.dify-api.priority=10"
+       - "traefik.http.services.dify-api.loadbalancer.server.port=5001"
+ 
+@@ -305,7 +307,7 @@ services:
+       - "traefik.enable=true"
+       - "traefik.http.routers.dify-web.rule=Host(`dify.${DOMAIN}`)"
+       - "traefik.http.routers.dify-web.entrypoints=websecure"
+-      - "traefik.http.routers.dify-web.tls.certresolver=le"
++      - "traefik.http.routers.dify-web.tls.certresolver=letsencrypt"
+       - "traefik.http.routers.dify-web.priority=1"
+       - "traefik.http.services.dify-web.loadbalancer.server.port=3000"
+ 
+@@ -372,7 +374,7 @@ services:
+       - "traefik.enable=true"
+       - "traefik.http.routers.n8n.rule=Host(`n8n.${DOMAIN}`)"
+       - "traefik.http.routers.n8n.entrypoints=websecure"
+-      - "traefik.http.routers.n8n.tls.certresolver=le"
++      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+ 
+   n8n-worker:
+@@ -475,5 +477,5 @@ services:
+       - "traefik.enable=true"
+       - "traefik.http.routers.status.rule=Host(`status.${DOMAIN}`)"
+       - "traefik.http.routers.status.entrypoints=websecure"
+-      - "traefik.http.routers.status.tls.certresolver=le"
++      - "traefik.http.routers.status.tls.certresolver=letsencrypt"
+       - "traefik.http.services.status.loadbalancer.server.port=3001"
+diff --git a/phase-2-marketing/docker-compose.yml b/phase-2-marketing/docker-compose.yml
+index 12e863c..f0c316d 100644
+--- a/phase-2-marketing/docker-compose.yml
++++ b/phase-2-marketing/docker-compose.yml
+@@ -89,7 +89,7 @@ services:
+ 
+   # ────────── POSTIZ · BUG #3 fix: pinneado v2.21.7 ──────────
+   postiz:
+-    image: ghcr.io/gitroomhq/postiz-app:v2.11.5  # MVP: pre-Temporal. Upgrade a v2.21.7 + Temporal después del primer cliente
++    image: ghcr.io/gitroomhq/postiz-app:v2.21.7  # MVP: pre-Temporal. Upgrade a v2.21.7 + Temporal después del primer cliente
+     container_name: nexus-postiz
+     restart: unless-stopped
+     environment:
+diff --git a/scripts/00-prepare-vps.sh b/scripts/00-prepare-vps.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/01-generate-secrets.sh b/scripts/01-generate-secrets.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/02-validate-secrets.sh b/scripts/02-validate-secrets.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/03-deploy-postgres-first.sh b/scripts/03-deploy-postgres-first.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/04-init-databases.sh b/scripts/04-init-databases.sh
+old mode 100644
+new mode 100755
+index 5ff749f..02f67b5
+--- a/scripts/04-init-databases.sh
++++ b/scripts/04-init-databases.sh
+@@ -6,34 +6,20 @@ cd "$(dirname "$0")/.."
+ 
+ echo "═══ NEXUS v1.3 · Init Databases ═══"
+ 
+-docker exec nexus-postgres pg_isready -U "${PG_ADMIN_USER}" &>/dev/null \
+-  || { echo "✗ Postgres no está corriendo. Ejecuta 03-deploy-postgres-first.sh"; exit 1; }
+-
+-PG_CMD="docker exec -e PGPASSWORD=${PG_ADMIN_PASS} nexus-postgres psql -U ${PG_ADMIN_USER} -d postgres"
++docker exec nexus-postgres pg_isready -U "${PG_ADMIN_USER}" &>/dev/null   || { echo "✗ Postgres no está corriendo. Ejecuta 03-deploy-postgres-first.sh"; exit 1; }
+ 
+ echo "→ Creando usuarios y bases de datos..."
+-$PG_CMD \
+-  -v pg_dify_pass="${PG_DIFY_PASS}" \
+-  -v pg_n8n_pass="${PG_N8N_PASS}" \
+-  -v pg_litellm_pass="${PG_LITELLM_PASS}" \
+-  -v pg_nexus_core_pass="${PG_NEXUS_CORE_PASS}" \
+-  -v pg_listmonk_pass="${PG_LISTMONK_PASS}" \
+-  -v pg_postiz_pass="${PG_POSTIZ_PASS}" \
+-  -v pg_evolution_pass="${PG_EVOLUTION_PASS}" \
+-  -v pg_plausible_pass="${PG_PLAUSIBLE_PASS}" \
+-  -f db-init/00-bootstrap.sql
+-
++docker exec -i -e PGPASSWORD="${PG_ADMIN_PASS}" nexus-postgres psql -U "${PG_ADMIN_USER}" -d postgres   -v pg_dify_pass="${PG_DIFY_PASS}"   -v pg_n8n_pass="${PG_N8N_PASS}"   -v pg_litellm_pass="${PG_LITELLM_PASS}"   -v pg_nexus_core_pass="${PG_NEXUS_CORE_PASS}"   -v pg_listmonk_pass="${PG_LISTMONK_PASS}"   -v pg_postiz_pass="${PG_POSTIZ_PASS}"   -v pg_evolution_pass="${PG_EVOLUTION_PASS}"   -v pg_plausible_pass="${PG_PLAUSIBLE_PASS}"   < db-init/00-bootstrap.sql
+ echo "✓ Usuarios y DBs creados"
+ 
+ echo "→ Aplicando schema nexus_core..."
+-$PG_CMD -d nexus_core -f db-init/01-nexus-core-schema.sql
++docker exec -i -e PGPASSWORD="${PG_ADMIN_PASS}" nexus-postgres psql -U "${PG_ADMIN_USER}" -d nexus_core   < db-init/01-nexus-core-schema.sql
+ echo "✓ Schema nexus_core OK"
+ 
+ echo "→ Verificando tablas nexus_core..."
+-TABLES=$($PG_CMD -d nexus_core -tAc "\dt" | cut -d'|' -f2 | tr -d ' ')
++TABLES=$(docker exec -e PGPASSWORD="${PG_ADMIN_PASS}" nexus-postgres psql -U "${PG_ADMIN_USER}" -d nexus_core -tAc "\dt" | cut -d'|' -f2 | tr -d ' ')
+ for t in tenants ai_task leads tutor_corrections; do
+-  echo "$TABLES" | grep -q "^${t}$" \
+-    && echo "  ✓ $t" || { echo "  ✗ $t FALTA"; exit 1; }
++  echo "$TABLES" | grep -q "^${t}$"     && echo "  ✓ $t" || { echo "  ✗ $t FALTA"; exit 1; }
+ done
+ 
+ echo "✅ Bases de datos inicializadas"
+diff --git a/scripts/05-deploy-phase-1.sh b/scripts/05-deploy-phase-1.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/06-deploy-phase-2.sh b/scripts/06-deploy-phase-2.sh
+old mode 100644
+new mode 100755
+index 742fd0e..c00ccdf
+--- a/scripts/06-deploy-phase-2.sh
++++ b/scripts/06-deploy-phase-2.sh
+@@ -7,8 +7,8 @@ cd "$(dirname "$0")/.."
+ echo "═══ NEXUS v1.3 · Deploy Fase 2 — Marketing ═══"
+ 
+ # Validar Phase 1 activa
+-docker ps --filter "name=nexus-n8n-main" --filter "status=running" --format "{{.Names}}" \
+-  | grep -q "nexus-n8n-main" || { echo "✗ Phase 1 no está corriendo. Ejecuta 05-deploy-phase-1.sh primero"; exit 1; }
++docker ps --filter "name=nexus-n8n" --filter "status=running" --format "{{.Names}}" \
++  | grep -q "nexus-n8n" || { echo "✗ Phase 1 no está corriendo. Ejecuta 05-deploy-phase-1.sh primero"; exit 1; }
+ 
+ # Validar compose
+ docker compose -f phase-2-marketing/docker-compose.yml --env-file .env config > /tmp/p2.yml \
+diff --git a/scripts/07-deploy-phase-3.sh b/scripts/07-deploy-phase-3.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/08-backup-restic.sh b/scripts/08-backup-restic.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/09-export-credentials.sh b/scripts/09-export-credentials.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/99-smoke-test.sh b/scripts/99-smoke-test.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/check-env-drift.sh b/scripts/check-env-drift.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/pre-commit-validate.sh b/scripts/pre-commit-validate.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/preflight-hostinger.sh b/scripts/preflight-hostinger.sh
+old mode 100644
+new mode 100755
+diff --git a/scripts/rollback-snapshot.sh b/scripts/rollback-snapshot.sh
+old mode 100644
+new mode 100755

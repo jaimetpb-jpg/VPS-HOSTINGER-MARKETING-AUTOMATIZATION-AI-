@@ -1,0 +1,98 @@
+# ════════════════════════════════════════════════════════════
+# NEXUS SUPREME v1.3 · .env generado por 01-generate-secrets.sh
+# Generado: 2026-05-29 03:06:57
+# ════════════════════════════════════════════════════════════
+
+# ─── DOMINIO (EDITAR) ───
+DOMAIN=<14 chars>
+ainexus.com.mx
+ACME_EMAIL=<20 chars>
+james@ainexus.com.mx
+TZ=<19 chars>
+
+# ─── OPERADOR (EDITAR) ───
+OPERATOR_WHATSAPP=<13 chars>
+5215525787385
+AINEXUS_INSTANCE=<12 chars>
+ainexus-main
+
+# ─── API KEYS (EDITAR) ───
+DEEPSEEK_API_KEY=<35 chars>
+sk-32610e2635df44f5a95b4b5ebb119cf4
+ANTHROPIC_API_KEY=<8 chars>
+OPENAI_API_KEY=<8 chars>
+GEMINI_API_KEY=<8 chars>
+
+# ─── SMTP (EDITAR) ───
+SMTP_HOST=<15 chars>
+smtp.resend.com
+SMTP_PORT=<3 chars>
+587
+SMTP_USER=<6 chars>
+resend
+SMTP_PASS=<36 chars>
+re_cC6fSR5y_5nenp6cX41SryLJaP3fiHi9R
+SMTP_FROM=<18 chars>
+noreply@ainexus.mx
+
+# ─── DIFY KEYS (completar después de configurar Dify UI) ───
+DIFY_API_KEY=<8 chars>
+DIFY_LEAD_QUALIFIER_KEY=<28 chars>
+app-xHxFro10k2gHPyzF7A4xdU71
+DIFY_CONCIERGE_KEY=<28 chars>
+app-4ACv6aokJ5oBwJJW3R2SweaM
+POSTIZ_API_KEY=<8 chars>
+
+# ─── POSTGRES ───────────────────────────────────────────────
+PG_ADMIN_USER=<11 chars>
+nexus_admin
+PG_ADMIN_PASS=<32 chars>
+432cfd732e763ebf2f5dbbae5f479a81
+PG_DIFY_PASS=<32 chars>
+5e5fd46681f7c83c43e3983baaf31e03
+PG_N8N_PASS=<32 chars>
+37ae2875b765f53789627228751f0c12
+PG_LITELLM_PASS=<32 chars>
+bdad9bf6d1c3fad1dbcc198eca8cdb78
+PG_NEXUS_CORE_PASS=<32 chars>
+d7302c16e90ba8bd653b05597380f6af
+PG_LISTMONK_PASS=<32 chars>
+93043e946a170125a5c55f3ce1927a00
+PG_POSTIZ_PASS=<32 chars>
+c3538f40132caa345cc948fbef8df4fc
+PG_EVOLUTION_PASS=<32 chars>
+e45915d536ff1c93a5233102ed099ee6
+PG_PLAUSIBLE_PASS=<32 chars>
+c9c173ecd1cc4bf4f935f47eaeefe316
+
+# ─── REDIS ──────────────────────────────────────────────────
+REDIS_PASS=<32 chars>
+dbf1edd0f79b53cd77f2d365550818dd
+
+# ─── QDRANT ─────────────────────────────────────────────────
+QDRANT_KEY=<32 chars>
+013de0248253686c02b6ce59aff063e5
+
+# ─── SERVICIOS ──────────────────────────────────────────────
+DIFY_SECRET_KEY=<47 chars>
+LITELLM_MASTER_KEY=<41 chars>
+sk-nexus-3a3d748d3bae4475146f643b95857e42
+LITELLM_UI_PASSWORD=<32 chars>
+079b7564f22ffd6343524c74ebcea8b8
+N8N_ENCRYPTION_KEY=<32 chars>
+f8c6b5cc697bcbfe8eb770e4e58dc16b
+N8N_USER_MGMT_JWT_SECRET=<64 chars>
+d43e5e31ee123f19b6be37768975979fcf6a3bfc9744c13ee3fd6c09128b227b
+EVOLUTION_API_KEY=<32 chars>
+18ddcdff3b1ed76ca25eacc1112cd4b1
+LISTMONK_ADMIN_USER=<5 chars>
+admin
+LISTMONK_ADMIN_PASS=<32 chars>
+a9fa9ec43c5c2bbaaaa8005c9deea9be
+POSTIZ_JWT_SECRET=<64 chars>
+1fd3d359e1bbfd693cb15f089454d9e0b9784d514d07dcc50d79a8b6dcbecbac
+PLAUSIBLE_SECRET_KEY=<64 chars>
+b7a9b4f30d037bbbd83855d55190a6cdbea871f7e0406f3fa92102d0acb6d879
+PLAUSIBLE_TOTP_KEY=<46 chars>
+BESZEL_AGENT_KEY=<32 chars>
+66c9bc7a179a0ea857bff903a623c40b

@@ -1,0 +1,74 @@
+NAMES                                          STATUS                          IMAGE
+nexus-postiz                                   Restarting (1) 41 seconds ago   ghcr.io/gitroomhq/postiz-app:v2.21.7
+nexus-listmonk                                 Restarting (1) 54 seconds ago   listmonk/listmonk:v4.1.0
+nexus-evolution                                Up 1 second                     atendai/evolution-api:v2.2.0
+nexus-n8n-worker                               Up 5 days (unhealthy)           n8nio/n8n:1.70.0
+nexus-n8n-worker-2                             Up 5 days (unhealthy)           n8nio/n8n:1.70.0
+nexus-n8n                                      Up 5 days                       n8nio/n8n:1.70.0
+nexus-dify-worker                              Up 6 days (unhealthy)           langgenius/dify-api:0.13.2
+nexus-dify-api                                 Up 6 days                       langgenius/dify-api:0.13.2
+nexus-litellm                                  Up 6 days                       ghcr.io/berriai/litellm:main-v1.52.0
+nexus-pgbouncer                                Up 6 days                       edoburu/pgbouncer:latest
+nexus-postgres                                 Up 6 days (healthy)             postgres:16.6-alpine
+nexus-redis                                    Up 6 days (healthy)             redis:7.4.1-alpine
+nexus-qdrant                                   Up 6 days                       qdrant/qdrant:v1.12.4
+nexus-uptimekuma                               Up 6 days (healthy)             louislam/uptime-kuma:1.23.16-alpine
+nexus-dify-web                                 Up 6 days                       langgenius/dify-web:0.13.2
+nexus-traefik                                  Created                         traefik:v3.1
+traefik-traefik-1                              Up 5 days                       traefik:latest
+ainexus-ainexus-1                              Up 10 days                      nginx:alpine
+iei-solar-direct-iei-solar-direct-1            Up 2 weeks                      nginx:alpine
+iei-solar-iei-solar-1                          Up 2 weeks                      nginx:alpine
+iei-website-iei-website-1                      Up 2 weeks                      nginx:alpine
+vaultwarden-s659-vaultwarden-1                 Up 2 weeks (healthy)            vaultwarden/server:latest
+langflow-fz5d-langflow-1                       Up 2 weeks                      langflowai/langflow:latest
+langflow-fz5d-db-1                             Up 2 weeks                      postgres:16-alpine
+crawl4ai-t9tb-crawl4ai-1                       Up 2 weeks (healthy)            unclecode/crawl4ai:latest
+flowise-xjvf-flowise-1                         Up 2 weeks                      flowiseai/flowise:latest
+unstructured-me0z-unstructured-1               Up 2 weeks (healthy)            downloads.unstructured.io/unstructured-io/unstructured-api:latest
+open-webui-qwbi-open-webui-1                   Up 2 weeks (healthy)            ghcr.io/open-webui/open-webui:main
+skyvern-fr1t-skyvern-ui-1                      Up 2 weeks                      public.ecr.aws/skyvern/skyvern-ui:latest
+skyvern-fr1t-skyvern-1                         Up 2 weeks                      public.ecr.aws/skyvern/skyvern:latest
+skyvern-fr1t-skyvern-db-1                      Up 2 weeks                      postgres:14-alpine
+dify-pv0a-web-1                                Up 2 weeks                      langgenius/dify-web:latest
+dify-pv0a-worker-beat-1                        Up 2 weeks                      langgenius/dify-api:latest
+dify-pv0a-worker-1                             Up 2 weeks                      langgenius/dify-api:latest
+dify-pv0a-api-1                                Up 2 weeks (healthy)            langgenius/dify-api:latest
+dify-pv0a-plugin-daemon-1                      Up 2 weeks                      langgenius/dify-plugin-daemon:0.5.3-local
+dify-pv0a-redis-1                              Up 2 weeks (healthy)            redis:6-alpine
+dify-pv0a-db-1                                 Up 2 weeks (healthy)            postgres:15-alpine
+dify-pv0a-sandbox-1                            Up 2 weeks (healthy)            langgenius/dify-sandbox:latest
+dify-pv0a-weaviate-1                           Up 2 weeks (healthy)            semitechnologies/weaviate:1.19.0
+dify-pv0a-ssrf-proxy-1                         Up 2 weeks                      ubuntu/squid:latest
+wordpress-towf-wordpress-1                     Up 2 weeks                      wordpress:latest
+wordpress-towf-db-1                            Up 2 weeks                      mysql:8
+evershop-cu2y-evershop-1                       Up 2 weeks (healthy)            evershop/evershop:2.1.1
+evershop-cu2y-postgres-1                       Up 2 weeks (healthy)            postgres:16-alpine
+uptime-kuma-kx24-uptime-kuma-1                 Up 2 weeks (healthy)            louislam/uptime-kuma:2
+visual-studio-code-server-m0ue-code-server-1   Up 2 weeks                      lscr.io/linuxserver/code-server:latest
+gitea-utjc-gitea-1                             Up 2 weeks                      docker.gitea.com/gitea:1.25.3
+gitea-utjc-db-1                                Up 2 weeks                      mysql:8
+wireguard-easy-jw38-wg-easy-1                  Up 2 weeks (healthy)            ghcr.io/wg-easy/wg-easy:15
+dockge-rgpj-dockge-1                           Up 2 weeks (healthy)            louislam/dockge:1
+apache-superset-idxy-superset-1                Up 2 weeks (healthy)            amancevice/superset:latest
+apache-superset-idxy-superset-db-1             Up 2 weeks (healthy)            postgres:16-alpine
+apache-superset-idxy-superset-redis-1          Up 2 weeks (healthy)            redis:7-alpine
+grafana-s3zv-grafana-1                         Up 2 weeks                      grafana/grafana:latest
+grafana-s3zv-postgres-1                        Up 2 weeks                      postgres:17-alpine
+appsmith-t4l3-appsmith-1                       Up 2 weeks (healthy)            appsmith/appsmith-ce
+qdrant-dcig-qdrant-1                           Up 2 weeks                      qdrant/qdrant:latest
+postiz-byzy-postiz-1                           Up 2 weeks                      ghcr.io/gitroomhq/postiz-app:latest
+postiz-byzy-temporal-admin-tools-1             Up 2 weeks                      temporalio/admin-tools:1.28.1-tctl-1.18.4-cli-1.4.1
+postiz-byzy-temporal-ui-1                      Up 2 weeks                      temporalio/ui:2.34.0
+postiz-byzy-temporal-1                         Up 2 weeks                      temporalio/auto-setup:1.28.1
+postiz-byzy-temporal-postgresql-1              Up 2 weeks (healthy)            postgres:16
+postiz-byzy-postiz-postgres-1                  Up 2 weeks (healthy)            postgres:17-alpine
+postiz-byzy-postiz-redis-1                     Up 2 weeks (healthy)            redis:7-alpine
+postiz-byzy-temporal-elasticsearch-1           Up 2 weeks (healthy)            elasticsearch:7.17.27
+redis-mzfu-redis-1                             Up 2 weeks                      redis:alpine
+agent-zero-irk9-agent-zero-1                   Up 2 weeks                      agent0ai/agent-zero:latest
+n8n-bglp-n8n-1                                 Up 2 weeks                      docker.n8n.io/n8nio/n8n
+postgresql-5eaz-postgresql-1                   Up 2 weeks                      postgres:17
+litellm-cjgi-litellm-1                         Up 2 weeks                      ghcr.io/berriai/litellm:main-stable
+litellm-cjgi-litellm-db-1                      Up 2 weeks                      postgres:16-alpine
+hermes-agent-auca-hermes-agent-1               Up 2 weeks                      ghcr.io/hostinger/hvps-hermes-agent:latest

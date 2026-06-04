@@ -1,0 +1,1136 @@
+[
+  {
+    "createdAt": "2026-05-30T01:46:39.492Z",
+    "updatedAt": "2026-05-30T01:52:06.164Z",
+    "id": "XNb8gPY0uHQk0RzS",
+    "name": "NEXUS · WhatsApp Concierge (HITL escalation)",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "wa-inbound",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "1",
+        "name": "Webhook · Evolution inbound",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Evolution API webhook payload\nconst body = $input.item.json.body || $input.item.json;\n\n// Solo procesar mensajes entrantes de texto, ignorar status updates\nif (body.event !== 'messages.upsert') return { json: { skip: true } };\nif (body.data?.key?.fromMe) return { json: { skip: true } };\n\nconst msg = body.data?.message?.conversation || body.data?.message?.extendedTextMessage?.text || '';\nif (!msg) return { json: { skip: true } };\n\nconst from = body.data?.key?.remoteJid?.replace('@s.whatsapp.net', '');\nconst instance = body.instance || 'ainexus-main';\nconst tenant_slug = instance.split('-')[0];\n\nreturn {\n  json: {\n    skip: false,\n    tenant_slug,\n    instance,\n    from,\n    message: String(msg).trim().substring(0, 2000),\n    received_at: new Date().toISOString(),\n    request_id: 'wa_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)\n  }\n};"
+        },
+        "id": "2",
+        "name": "Parse Evolution payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          400,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip }}",
+                "rightValue": false,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "false"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "id": "3",
+        "name": "IF · Process message",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          600,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://dify-api:5001/v1/chat-messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.DIFY_CONCIERGE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"inputs\": {\n    \"tenant_slug\": \"{{ $('Parse Evolution payload').item.json.tenant_slug }}\"\n  },\n  \"query\": \"{{ $('Parse Evolution payload').item.json.message }}\",\n  \"response_mode\": \"blocking\",\n  \"conversation_id\": \"\",\n  \"user\": \"wa-{{ $('Parse Evolution payload').item.json.from }}\",\n  \"auto_generate_name\": false\n}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "4",
+        "name": "Dify · Concierge Agent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          800,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Dify chatbot retorna answer + metadata\nconst ans = $input.item.json.answer || '';\nconst meta = $input.item.json.metadata || {};\nconst usage = meta.usage || {};\nconst original = $('Parse Evolution payload').item.json;\n\n// El agente Dify debe incluir [ESCALATE] al inicio si requiere humano\nconst escalate = ans.startsWith('[ESCALATE]');\nconst clean_answer = escalate ? ans.replace('[ESCALATE]', '').trim() : ans;\n\nreturn {\n  json: {\n    ...original,\n    agent_response: clean_answer,\n    escalate,\n    tokens_in: usage.prompt_tokens || 0,\n    tokens_out: usage.completion_tokens || 0,\n    cost_usd: parseFloat(usage.total_price || 0)\n  }\n};"
+        },
+        "id": "5",
+        "name": "Parse Dify response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1000,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.escalate }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        },
+        "id": "6",
+        "name": "IF · Escalate to human?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1200,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://evolution:8080/message/sendText/{{ $('Parse Evolution payload').item.json.instance }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.EVOLUTION_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"number\": \"{{ $env.OPERATOR_WHATSAPP }}\",\n  \"text\": \"⚠ ESCALACIÓN HUMANA\\n\\nCliente: {{ $('Parse Evolution payload').item.json.tenant_slug }}\\nContacto: {{ $('Parse Evolution payload').item.json.from }}\\n\\n💬 Mensaje:\\n{{ $('Parse Evolution payload').item.json.message }}\\n\\n🤖 El agente sugiere:\\n{{ $('Parse Dify response').item.json.agent_response }}\\n\\n👉 Tomar control desde Evolution: https://wa.{{ $env.DOMAIN }}\"\n}"
+        },
+        "id": "7",
+        "name": "WhatsApp · Notify operator",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1400,
+          100
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://evolution:8080/message/sendText/{{ $('Parse Evolution payload').item.json.instance }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.EVOLUTION_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"number\": \"{{ $('Parse Evolution payload').item.json.from }}\",\n  \"text\": \"Te paso con un asesor humano en breve. Mientras tanto: {{ $('Parse Dify response').item.json.agent_response }}\"\n}"
+        },
+        "id": "8",
+        "name": "WhatsApp · Reply to user (escalated)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1600,
+          100
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://evolution:8080/message/sendText/{{ $('Parse Evolution payload').item.json.instance }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.EVOLUTION_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"number\": \"{{ $('Parse Evolution payload').item.json.from }}\",\n  \"text\": {{ JSON.stringify($('Parse Dify response').item.json.agent_response) }}\n}"
+        },
+        "id": "9",
+        "name": "WhatsApp · Reply to user (auto)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1400,
+          300
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO ai_task (tenant_id, workflow_name, status, input_payload, output_payload, tokens_in, tokens_out, cost_usd, model_used) SELECT id, 'wa_concierge', $1, $2::jsonb, $3::jsonb, $4, $5, $6, 'agent-copy-es' FROM tenants WHERE slug = $7;",
+          "additionalFields": {
+            "queryParams": "={{ $('Parse Dify response').item.json.escalate ? 'awaiting_approval' : 'published' }},={{ JSON.stringify({ from: $('Parse Evolution payload').item.json.from, message: $('Parse Evolution payload').item.json.message }) }},={{ JSON.stringify({ response: $('Parse Dify response').item.json.agent_response, escalated: $('Parse Dify response').item.json.escalate }) }},={{ $('Parse Dify response').item.json.tokens_in }},={{ $('Parse Dify response').item.json.tokens_out }},={{ $('Parse Dify response').item.json.cost_usd }},={{ $('Parse Evolution payload').item.json.tenant_slug }}"
+          }
+        },
+        "id": "10",
+        "name": "PG · Log interaction",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          1800,
+          200
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "f5e7476e-a111-404f-bcda-a0fbc7f1266b",
+            "name": "nexus-pg-core"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={\"ok\": true, \"received\": true}",
+          "options": {
+            "responseCode": 200
+          }
+        },
+        "id": "11",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          600,
+          300
+        ],
+        "continueOnFail": true
+      }
+    ],
+    "connections": {
+      "Webhook · Evolution inbound": {
+        "main": [
+          [
+            {
+              "node": "Parse Evolution payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Evolution payload": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF · Process message": {
+        "main": [
+          [
+            {
+              "node": "Dify · Concierge Agent",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Dify · Concierge Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse Dify response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Dify response": {
+        "main": [
+          [
+            {
+              "node": "IF · Escalate to human?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF · Escalate to human?": {
+        "main": [
+          [
+            {
+              "node": "WhatsApp · Notify operator",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "WhatsApp · Reply to user (escalated)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "WhatsApp · Reply to user (auto)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "WhatsApp · Reply to user (escalated)": {
+        "main": [
+          [
+            {
+              "node": "PG · Log interaction",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "WhatsApp · Reply to user (auto)": {
+        "main": [
+          [
+            {
+              "node": "PG · Log interaction",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Respond to Webhook": {
+        "main": [
+          [
+            {
+              "node": "IF · Process message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "all",
+      "timezone": "America/Mexico_City"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "f803fc6e-2eda-4623-83f6-903464fc7568",
+    "triggerCount": 1,
+    "tags": []
+  },
+  {
+    "createdAt": "2026-05-30T01:46:30.403Z",
+    "updatedAt": "2026-05-30T02:57:15.929Z",
+    "id": "X3FWQDErjKUiqdek",
+    "name": "NEXUS · Lead Qualifier (HITL)",
+    "active": true,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "lead-intake",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "1",
+        "name": "Webhook · Lead Intake",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          200,
+          300
+        ],
+        "webhookId": "469d8b91-36c7-418b-9ae6-2c9b8aad2a4e"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Sanitizer + normalizador de leads de cualquier fuente\nconst body = $input.item.json.body || $input.item.json;\n\nfunction clean(text, max = 500) {\n  if (!text) return '';\n  return String(text).replace(/[\\r\\n]+/g, ' ').replace(/\\s+/g, ' ').trim().substring(0, max);\n}\n\nconst tenant_slug = body.tenant_slug || 'ainexus';\n\nreturn {\n  json: {\n    tenant_slug,\n    lead: {\n      name: clean(body.name),\n      email: clean(body.email, 200),\n      phone: clean(body.phone, 50),\n      company: clean(body.company, 200),\n      website: clean(body.website, 300),\n      message: clean(body.message, 2000),\n      source: body.source || 'webhook',\n      utm_source: body.utm_source || null,\n      utm_campaign: body.utm_campaign || null\n    },\n    request_id: 'lead_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),\n    received_at: new Date().toISOString()\n  }\n};"
+        },
+        "id": "2",
+        "name": "Sanitizer",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          400,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "insert",
+          "schema": {
+            "__rl": true,
+            "value": "public",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "ai_task",
+            "mode": "list"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "tenant_id": "={{ $('PG · Get Tenant').item.json.id }}",
+              "workflow_name": "lead_qualifier",
+              "status": "processing",
+              "input_payload": "={{ $('Sanitizer').item.json }}"
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "tenant_id",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "workflow_name",
+                "type": "string",
+                "display": true,
+                "required": true,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "status",
+                "type": "string",
+                "display": true,
+                "required": true,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "input_payload",
+                "type": "json",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "3",
+        "name": "PG · Create task",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          700,
+          300
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "f5e7476e-a111-404f-bcda-a0fbc7f1266b",
+            "name": "nexus-pg-core"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://dify-api:5001/v1/chat-messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.DIFY_LEAD_QUALIFIER_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"inputs\": {},\n  \"query\": \"Califica este lead y devuelve SOLO un JSON: {score:0-100, vertical_match:bool, intent:high/medium/low, suggested_action:string, suggested_response_es:string}. Lead: nombre={{ $('Sanitizer').item.json.lead.name }}, empresa={{ $('Sanitizer').item.json.lead.company }}, email={{ $('Sanitizer').item.json.lead.email || 'N/A' }}, fuente={{ $('Sanitizer').item.json.lead.source }}\",\n  \"response_mode\": \"blocking\",\n  \"user\": \"lead-qualifier-{{ $('Sanitizer').item.json.tenant_slug }}\",\n  \"conversation_id\": \"\"\n}",
+          "options": {
+            "timeout": 90000
+          }
+        },
+        "id": "4",
+        "name": "Dify · Qualifier Agent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1100,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Handle Dify workflow outputs or chat response\nconst raw = $input.item.json;\nlet outputs = {};\n\nif (raw.data && raw.data.outputs) {\n  // Dify workflow app response\n  outputs = raw.data.outputs;\n} else if (raw.answer) {\n  // Dify chat app response - extract JSON from answer\n  try {\n    const m = raw.answer.match(/\\{[\\s\\S]*\\}/);\n    if (m) outputs = JSON.parse(m[0]);\n  } catch(e) {}\n}\n\nconst sanitized = $('Sanitizer').item.json;\nconst taskRow = $('PG · Create task').item.json;\n\nconst score = parseInt(outputs.score) || 0;\nlet tier = 'COLD';\nif (score >= 80) tier = 'HOT';\nelse if (score >= 50) tier = 'WARM';\n\nreturn {\n  json: {\n    task_id: taskRow.id,\n    tenant_slug: sanitized.tenant_slug,\n    lead: sanitized.lead,\n    score,\n    tier,\n    vertical_match: !!outputs.vertical_match,\n    intent: outputs.intent || 'unknown',\n    suggested_action: outputs.suggested_action || '',\n    suggested_response_es: outputs.suggested_response_es || '',\n    qualified_at: new Date().toISOString()\n  }\n};"
+        },
+        "id": "5",
+        "name": "Parse · Build tier",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1300,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "insert",
+          "schema": {
+            "__rl": true,
+            "value": "public",
+            "mode": "list"
+          },
+          "table": {
+            "__rl": true,
+            "value": "leads",
+            "mode": "list"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "tenant_id": "={{ $('PG · Get Tenant').item.json.id }}",
+              "name": "={{ $json.lead.name }}",
+              "email": "={{ $json.lead.email || null }}",
+              "phone": "={{ $json.lead.phone || null }}",
+              "company": "={{ $json.lead.company || null }}",
+              "source": "={{ $json.lead.source || 'webhook' }}",
+              "score": "={{ $json.score }}",
+              "tier": "={{ $json.tier }}",
+              "intent": "={{ $json.intent }}"
+            },
+            "matchingColumns": [
+              "id"
+            ],
+            "schema": [
+              {
+                "id": "tenant_id",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "name",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "email",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "phone",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "company",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "source",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "score",
+                "type": "number",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "tier",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              },
+              {
+                "id": "intent",
+                "type": "string",
+                "display": true,
+                "required": false,
+                "defaultMatch": false,
+                "canBeUsedToMatch": false
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "6",
+        "name": "PG · Insert lead",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          1500,
+          300
+        ],
+        "continueOnFail": false,
+        "credentials": {
+          "postgres": {
+            "id": "f5e7476e-a111-404f-bcda-a0fbc7f1266b",
+            "name": "nexus-pg-core"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://evolution:8080/message/sendText/{{ $env.AINEXUS_INSTANCE }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.EVOLUTION_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"number\": \"{{ $env.OPERATOR_WHATSAPP }}\",\n  \"text\": \"🔥 LEAD HOT (score {{ $json.score }})\\n\\n{{ $json.lead.name }} - {{ $json.lead.company }}\\n📧 {{ $json.lead.email }}\\n📱 {{ $json.lead.phone }}\\n\\n💡 Intent: {{ $json.intent }}\\n📋 Acción: {{ $json.suggested_action }}\\n\\n✍️ Respuesta sugerida:\\n{{ $json.suggested_response_es }}\\n\\nAprobar envío: https://n8n.{{ $env.DOMAIN }}/form/nexus-approval-form?task={{ $json.task_id }}\"\n}"
+        },
+        "id": "8",
+        "name": "WhatsApp · Notify operator (HOT)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1900,
+          100
+        ]
+      },
+      {
+        "parameters": {
+          "resume": "webhook",
+          "options": {
+            "webhookSuffix": "approve-{{ $json.task_id }}"
+          }
+        },
+        "id": "9",
+        "name": "Wait · HOT approval",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          2100,
+          100
+        ],
+        "webhookId": "approve-hot-lead"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://evolution:8080/message/sendText/{{ $env.AINEXUS_INSTANCE }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.EVOLUTION_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"number\": \"{{ $json.lead.phone }}\",\n  \"text\": {{ JSON.stringify($json.suggested_response_es) }}\n}"
+        },
+        "id": "10",
+        "name": "WhatsApp · Reply HOT lead",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2300,
+          100
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://email.{{ $env.DOMAIN }}/api/subscribers",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"email\": \"{{ $json.lead.email }}\",\n  \"name\": \"{{ $json.lead.name }}\",\n  \"status\": \"enabled\",\n  \"lists\": [2],\n  \"attribs\": {\n    \"tier\": \"WARM\",\n    \"company\": \"{{ $json.lead.company }}\",\n    \"tenant\": \"{{ $json.tenant_slug }}\"\n  }\n}"
+        },
+        "id": "11",
+        "name": "Listmonk · WARM nurture",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2100,
+          300
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://email.{{ $env.DOMAIN }}/api/subscribers",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"email\": \"{{ $json.lead.email }}\",\n  \"name\": \"{{ $json.lead.name }}\",\n  \"status\": \"enabled\",\n  \"lists\": [3],\n  \"attribs\": {\n    \"tier\": \"COLD\",\n    \"company\": \"{{ $json.lead.company }}\",\n    \"tenant\": \"{{ $json.tenant_slug }}\"\n  }\n}"
+        },
+        "id": "12",
+        "name": "Listmonk · COLD drip",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2100,
+          500
+        ],
+        "continueOnFail": true
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "UPDATE ai_task SET status = 'done', published_at = NOW(), output_payload = $1::jsonb WHERE id = $2::uuid",
+          "options": {
+            "queryReplacement": "={{ [JSON.stringify($('Set · Re-inject tier data').item.json), $('Set · Re-inject tier data').item.json.task_id] }}"
+          }
+        },
+        "id": "13",
+        "name": "PG · Mark done",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          2300,
+          300
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "f5e7476e-a111-404f-bcda-a0fbc7f1266b",
+            "name": "nexus-pg-core"
+          }
+        },
+        "continueOnFail": false
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={\"ok\": true, \"received\": true, \"task_id\": \"{{ $('PG \\u00b7 Create task').item.json.id }}\"}",
+          "options": {
+            "responseCode": 200
+          }
+        },
+        "id": "14",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          900,
+          300
+        ],
+        "continueOnFail": true
+      },
+      {
+        "id": "pg-get-tenant-001",
+        "name": "PG · Get Tenant",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          550,
+          300
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "f5e7476e-a111-404f-bcda-a0fbc7f1266b",
+            "name": "nexus-pg-core"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id FROM tenants WHERE slug = $1",
+          "options": {
+            "queryReplacement": "={{ [$json.tenant_slug] }}"
+          }
+        },
+        "continueOnFail": false
+      },
+      {
+        "id": "set-tier-001",
+        "name": "Set · Re-inject tier data",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1700,
+          300
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const parsed = $('Parse · Build tier').item.json;\nconst row = $input.item.json;\nreturn {\n  json: {\n    lead_id: row.id,\n    task_id: parsed.task_id,\n    tier: parsed.tier,\n    score: parsed.score,\n    lead: parsed.lead,\n    tenant_slug: parsed.tenant_slug,\n    intent: parsed.intent,\n    suggested_action: parsed.suggested_action,\n    suggested_response_es: parsed.suggested_response_es,\n    vertical_match: parsed.vertical_match,\n    qualified_at: parsed.qualified_at\n  }\n};"
+        }
+      },
+      {
+        "id": "if-hot-001",
+        "name": "IF · Is HOT",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1900,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "hot-cond",
+                "leftValue": "={{ $json.tier }}",
+                "rightValue": "HOT",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "if-warm-001",
+        "name": "IF · Is WARM",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          1900,
+          500
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "warm-cond",
+                "leftValue": "={{ $json.tier }}",
+                "rightValue": "WARM",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Webhook · Lead Intake": {
+        "main": [
+          [
+            {
+              "node": "Sanitizer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sanitizer": {
+        "main": [
+          [
+            {
+              "node": "PG · Get Tenant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PG · Create task": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dify · Qualifier Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse · Build tier",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse · Build tier": {
+        "main": [
+          [
+            {
+              "node": "PG · Insert lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "WhatsApp · Notify operator (HOT)": {
+        "main": [
+          [
+            {
+              "node": "Wait · HOT approval",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait · HOT approval": {
+        "main": [
+          [
+            {
+              "node": "WhatsApp · Reply HOT lead",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "WhatsApp · Reply HOT lead": {
+        "main": [
+          [
+            {
+              "node": "PG · Mark done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Listmonk · WARM nurture": {
+        "main": [
+          [
+            {
+              "node": "PG · Mark done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Listmonk · COLD drip": {
+        "main": [
+          [
+            {
+              "node": "PG · Mark done",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PG · Insert lead": {
+        "main": [
+          [
+            {
+              "node": "Set · Re-inject tier data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Respond to Webhook": {
+        "main": [
+          [
+            {
+              "node": "Dify · Qualifier Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "PG · Get Tenant": {
+        "main": [
+          [
+            {
+              "node": "PG · Create task",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set · Re-inject tier data": {
+        "main": [
+          [
+            {
+              "node": "IF · Is HOT",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF · Is HOT": {
+        "main": [
+          [
+            {
+              "node": "WhatsApp · Notify operator (HOT)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "IF · Is WARM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF · Is WARM": {
+        "main": [
+          [
+            {
+              "node": "Listmonk · WARM nurture",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Listmonk · COLD drip",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "saveDataSuccessExecution": "all",
+      "timezone": "America/Mexico_City"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "0c6fa402-41b6-4275-9c93-420eae4298e3",
+    "triggerCount": 1,
+    "tags": []
+  }
+]

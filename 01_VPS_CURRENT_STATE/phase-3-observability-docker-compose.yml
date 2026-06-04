@@ -1,0 +1,103 @@
+# ═══════════════════════════════════════════════════════════════
+# FASE 3 · OBSERVABILIDAD v1.2 (sin cambios mayores vs v1.1)
+# Solo confirma versiones pinneadas
+# ═══════════════════════════════════════════════════════════════
+
+networks:
+  nexus-public:
+    external: true
+  nexus-backbone:
+    external: true
+
+volumes:
+  plausible_events:
+    name: nexus_plausible_events
+  beszel_data:
+    name: nexus_beszel_data
+
+services:
+  plausible-events:
+    image: clickhouse/clickhouse-server:24.3.3.102-alpine
+    container_name: nexus-plausible-events
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - plausible_events:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    networks:
+      - nexus-backbone
+
+  plausible:
+    image: ghcr.io/plausible/community-edition:v2.1.4
+    container_name: nexus-plausible
+    restart: unless-stopped
+    command: sh -c "/entrypoint.sh db init-admin && /entrypoint.sh db migrate && /entrypoint.sh run"
+    environment:
+      BASE_URL: https://analytics.${DOMAIN}
+      SECRET_KEY_BASE: ${PLAUSIBLE_SECRET_KEY}
+      TOTP_VAULT_KEY: ${PLAUSIBLE_TOTP_KEY}
+      DATABASE_URL: postgres://plausible_app:${PG_PLAUSIBLE_PASS}@pgbouncer:6432/plausible_db
+      CLICKHOUSE_DATABASE_URL: http://plausible-events:8123/plausible_events_db
+      MAILER_EMAIL: ${SMTP_FROM}
+      SMTP_HOST_ADDR: ${SMTP_HOST}
+      SMTP_HOST_PORT: ${SMTP_PORT}
+      SMTP_USER_NAME: ${SMTP_USER}
+      SMTP_USER_PWD: ${SMTP_PASS}
+      DISABLE_REGISTRATION: invite_only
+    depends_on:
+      - plausible-events
+    networks:
+      - nexus-public
+      - nexus-backbone
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.analytics.rule=Host(`analytics.${DOMAIN}`)"
+      - "traefik.http.routers.analytics.entrypoints=websecure"
+      - "traefik.http.routers.analytics.tls.certresolver=le"
+      - "traefik.http.services.analytics.loadbalancer.server.port=8000"
+
+  beszel:
+    image: henrygd/beszel:0.9.1
+    container_name: nexus-beszel
+    restart: unless-stopped
+    volumes:
+      - beszel_data:/beszel_data
+    networks:
+      - nexus-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sys.rule=Host(`sys.${DOMAIN}`)"
+      - "traefik.http.routers.sys.entrypoints=websecure"
+      - "traefik.http.routers.sys.tls.certresolver=le"
+      - "traefik.http.routers.sys.middlewares=basic-auth@file"
+      - "traefik.http.services.sys.loadbalancer.server.port=8090"
+
+  beszel-agent:
+    image: henrygd/beszel-agent:0.9.1
+    container_name: nexus-beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      LISTEN: 45876
+      KEY: ${BESZEL_AGENT_KEY}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # Dozzle SOLO localhost (security fix v1.1, mantiene v1.2)
+  dozzle:
+    image: amir20/dozzle:v8.7.0
+    container_name: nexus-dozzle
+    restart: unless-stopped
+    environment:
+      DOZZLE_LEVEL: info
+      DOZZLE_TAILSIZE: 300
+      DOZZLE_FILTER: "name=nexus-*"
+      DOZZLE_NO_ANALYTICS: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:8888:8080"

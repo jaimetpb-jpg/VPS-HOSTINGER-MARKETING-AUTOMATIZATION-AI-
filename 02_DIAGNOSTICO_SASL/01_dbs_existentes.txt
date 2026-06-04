@@ -1,0 +1,10 @@
+ dify         | dify_app       | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | dify_app=CTc/dify_app
+ evolution    | evolution_app  | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =Tc/evolution_app                +
+              |                |          |                 |            |            |            |           | evolution_app=CTc/evolution_app
+ listmonk     | listmonk_app   | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =Tc/listmonk_app                 +
+              |                |          |                 |            |            |            |           | listmonk_app=CTc/listmonk_app
+ litellm      | litellm_app    | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | litellm_app=CTc/litellm_app
+ n8n          | n8n_app        | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | n8n_app=CTc/n8n_app
+ nexus_core   | nexus_core_app | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | nexus_core_app=CTc/nexus_core_app
+ postiz       | postiz_app     | UTF8     | libc            | en_US.utf8 | en_US.utf8 |            |           | =Tc/postiz_app                   +
+              |                |          |                 |            |            |            |           | postiz_app=CTc/postiz_app

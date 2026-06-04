@@ -1,0 +1,260 @@
+===== nexus-evolution =====
+Error: Schema engine error:
+FATAL: SASL authentication failed
+
+Error executing command: rm -rf ./prisma/migrations && cp -r ./prisma/postgresql-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/postgresql-schema.prisma
+Migration failed
+Deploying migrations for postgresql
+Database URL: 
+
+> evolution-api@2.2.0 db:deploy
+> node runWithProvider.js "rm -rf ./prisma/migrations && cp -r ./prisma/DATABASE_PROVIDER-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/DATABASE_PROVIDER-schema.prisma"
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma/postgresql-schema.prisma
+Datasource "db": PostgreSQL database "evolution", schema "public" at "pgbouncer:6432"
+
+Error: Schema engine error:
+FATAL: SASL authentication failed
+
+Error executing command: rm -rf ./prisma/migrations && cp -r ./prisma/postgresql-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/postgresql-schema.prisma
+Migration failed
+Deploying migrations for postgresql
+Database URL: 
+
+> evolution-api@2.2.0 db:deploy
+> node runWithProvider.js "rm -rf ./prisma/migrations && cp -r ./prisma/DATABASE_PROVIDER-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/DATABASE_PROVIDER-schema.prisma"
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma/postgresql-schema.prisma
+Datasource "db": PostgreSQL database "evolution", schema "public" at "pgbouncer:6432"
+
+Error: Schema engine error:
+FATAL: SASL authentication failed
+
+Error executing command: rm -rf ./prisma/migrations && cp -r ./prisma/postgresql-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/postgresql-schema.prisma
+Migration failed
+Deploying migrations for postgresql
+Database URL: 
+
+> evolution-api@2.2.0 db:deploy
+> node runWithProvider.js "rm -rf ./prisma/migrations && cp -r ./prisma/DATABASE_PROVIDER-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/DATABASE_PROVIDER-schema.prisma"
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma/postgresql-schema.prisma
+Datasource "db": PostgreSQL database "evolution", schema "public" at "pgbouncer:6432"
+
+Error: Schema engine error:
+FATAL: SASL authentication failed
+
+Error executing command: rm -rf ./prisma/migrations && cp -r ./prisma/postgresql-migrations ./prisma/migrations && npx prisma migrate deploy --schema ./prisma/postgresql-schema.prisma
+Migration failed
+
+===== nexus-listmonk =====
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:28:15.061528 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:28:15.061734 init.go:163: reading config: config.toml
+2026/06/04 19:28:15.062001 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:28:15.066201 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:29:15.384752 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:29:15.384922 init.go:163: reading config: config.toml
+2026/06/04 19:29:15.385237 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:29:15.388530 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:30:15.709021 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:30:15.709192 init.go:163: reading config: config.toml
+2026/06/04 19:30:15.709561 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:30:15.713804 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:31:16.014475 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:31:16.014633 init.go:163: reading config: config.toml
+2026/06/04 19:31:16.014940 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:31:16.019113 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:32:16.336133 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:32:16.336286 init.go:163: reading config: config.toml
+2026/06/04 19:32:16.336602 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:32:16.340542 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:33:16.637078 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:33:16.637264 init.go:163: reading config: config.toml
+2026/06/04 19:33:16.637636 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:33:16.642124 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:34:16.969886 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:34:16.970047 init.go:163: reading config: config.toml
+2026/06/04 19:34:16.970350 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:34:16.975763 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:35:17.269740 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:35:17.269921 init.go:163: reading config: config.toml
+2026/06/04 19:35:17.270227 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:35:17.275303 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:36:17.598218 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:36:17.598398 init.go:163: reading config: config.toml
+2026/06/04 19:36:17.598829 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:36:17.602301 init.go:307: error connecting to DB: pq: SASL authentication failed
+Launching listmonk with user=[root] group=[root] PUID=[0] PGID=[0]
+2026/06/04 19:37:17.910761 main.go:107: v4.1.0 (0a27de1 2024-11-12T18:42:26Z, linux/amd64)
+2026/06/04 19:37:17.911031 init.go:163: reading config: config.toml
+2026/06/04 19:37:17.911397 init.go:303: connecting to db: pgbouncer:6432/listmonk
+2026/06/04 19:37:17.915081 init.go:307: error connecting to DB: pq: SASL authentication failed
+
+===== nexus-postiz =====
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+
+> gitroom@1.0.0 pm2 /app
+> pnpm run pm2-run
+
+
+> gitroom@1.0.0 pm2-run /app
+> pm2 delete all || true && pnpm run prisma-db-push && pnpm run --parallel pm2 && pm2 logs
+
+[PM2] Spawning PM2 daemon with pm2_home=/root/.pm2
+[PM2] PM2 Successfully daemonized
+[PM2][WARN] No process found
+
+> gitroom@1.0.0 prisma-db-push /app
+> pnpm dlx prisma@6.5.0 db push --accept-data-loss --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma
+
+Prisma schema loaded from libraries/nestjs-libraries/src/database/prisma/schema.prisma
+Datasource "db": PostgreSQL database "postiz", schema "public" at "pgbouncer:6432"
+
+Error: Schema engine error:
+FATAL: SASL authentication failed
+
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+
+> gitroom@1.0.0 pm2 /app
+> pnpm run pm2-run
+
+
+> gitroom@1.0.0 pm2-run /app
+> pm2 delete all || true && pnpm run prisma-db-push && pnpm run --parallel pm2 && pm2 logs
+
+[PM2] Spawning PM2 daemon with pm2_home=/root/.pm2
+[PM2] PM2 Successfully daemonized
+[PM2][WARN] No process found
+
+> gitroom@1.0.0 prisma-db-push /app
+> pnpm dlx prisma@6.5.0 db push --accept-data-loss --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma
+
+Prisma schema loaded from libraries/nestjs-libraries/src/database/prisma/schema.prisma
+Datasource "db": PostgreSQL database "postiz", schema "public" at "pgbouncer:6432"
+
+Error: Schema engine error:
+FATAL: SASL authentication failed
+
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.
+
+===== nexus-pgbouncer =====
+2026-06-04 19:34:16.975 UTC [1] WARNING C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:55264 pooler error: SASL authentication failed
+2026-06-04 19:34:17.480 UTC [1] LOG stats: 0 xacts/s, 0 queries/s, 0 client parses/s, 0 server parses/s, 0 binds/s, in 0 B/s, out 0 B/s, xact 0 us, query 0 us, wait 0 us
+2026-06-04 19:34:24.759 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:44822 no such user: postiz_app
+2026-06-04 19:34:24.759 UTC [1] LOG C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44822 login attempt: db=postiz user=postiz_app tls=no replication=no
+2026-06-04 19:34:24.763 UTC [1] ERROR C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44822 password authentication failed
+2026-06-04 19:34:24.763 UTC [1] LOG C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44822 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:34:24.763 UTC [1] WARNING C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44822 pooler error: SASL authentication failed
+2026-06-04 19:35:08.698 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:51112 no such user: evolution_app
+2026-06-04 19:35:08.698 UTC [1] LOG C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:51112 login attempt: db=evolution user=evolution_app tls=no replication=no
+2026-06-04 19:35:08.702 UTC [1] ERROR C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:51112 password authentication failed
+2026-06-04 19:35:08.702 UTC [1] LOG C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:51112 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:35:08.702 UTC [1] WARNING C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:51112 pooler error: SASL authentication failed
+2026-06-04 19:35:17.271 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:37036 no such user: listmonk_app
+2026-06-04 19:35:17.271 UTC [1] LOG C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:37036 login attempt: db=listmonk user=listmonk_app tls=no replication=no
+2026-06-04 19:35:17.275 UTC [1] ERROR C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:37036 password authentication failed
+2026-06-04 19:35:17.275 UTC [1] LOG C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:37036 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:35:17.275 UTC [1] WARNING C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:37036 pooler error: SASL authentication failed
+2026-06-04 19:35:17.480 UTC [1] LOG stats: 0 xacts/s, 0 queries/s, 0 client parses/s, 0 server parses/s, 0 binds/s, in 0 B/s, out 0 B/s, xact 0 us, query 0 us, wait 0 us
+2026-06-04 19:35:27.576 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:54852 no such user: postiz_app
+2026-06-04 19:35:27.576 UTC [1] LOG C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:54852 login attempt: db=postiz user=postiz_app tls=no replication=no
+2026-06-04 19:35:27.580 UTC [1] ERROR C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:54852 password authentication failed
+2026-06-04 19:35:27.580 UTC [1] LOG C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:54852 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:35:27.580 UTC [1] WARNING C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:54852 pooler error: SASL authentication failed
+2026-06-04 19:36:10.326 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:58322 no such user: evolution_app
+2026-06-04 19:36:10.326 UTC [1] LOG C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:58322 login attempt: db=evolution user=evolution_app tls=no replication=no
+2026-06-04 19:36:10.330 UTC [1] ERROR C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:58322 password authentication failed
+2026-06-04 19:36:10.331 UTC [1] LOG C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:58322 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:36:10.331 UTC [1] WARNING C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:58322 pooler error: SASL authentication failed
+2026-06-04 19:36:17.480 UTC [1] LOG stats: 0 xacts/s, 0 queries/s, 0 client parses/s, 0 server parses/s, 0 binds/s, in 0 B/s, out 0 B/s, xact 0 us, query 0 us, wait 0 us
+2026-06-04 19:36:17.600 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:58336 no such user: listmonk_app
+2026-06-04 19:36:17.600 UTC [1] LOG C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:58336 login attempt: db=listmonk user=listmonk_app tls=no replication=no
+2026-06-04 19:36:17.602 UTC [1] ERROR C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:58336 password authentication failed
+2026-06-04 19:36:17.602 UTC [1] LOG C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:58336 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:36:17.602 UTC [1] WARNING C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:58336 pooler error: SASL authentication failed
+2026-06-04 19:36:30.283 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:44112 no such user: postiz_app
+2026-06-04 19:36:30.283 UTC [1] LOG C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44112 login attempt: db=postiz user=postiz_app tls=no replication=no
+2026-06-04 19:36:30.287 UTC [1] ERROR C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44112 password authentication failed
+2026-06-04 19:36:30.287 UTC [1] LOG C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44112 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:36:30.287 UTC [1] WARNING C-0x71e555061698: (nodb)/postiz_app@172.16.34.10:44112 pooler error: SASL authentication failed
+2026-06-04 19:37:11.907 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:52686 no such user: evolution_app
+2026-06-04 19:37:11.907 UTC [1] LOG C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:52686 login attempt: db=evolution user=evolution_app tls=no replication=no
+2026-06-04 19:37:11.911 UTC [1] ERROR C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:52686 password authentication failed
+2026-06-04 19:37:11.911 UTC [1] LOG C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:52686 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:37:11.911 UTC [1] WARNING C-0x71e555061698: (nodb)/evolution_app@172.16.34.10:52686 pooler error: SASL authentication failed
+2026-06-04 19:37:17.480 UTC [1] LOG stats: 0 xacts/s, 0 queries/s, 0 client parses/s, 0 server parses/s, 0 binds/s, in 0 B/s, out 0 B/s, xact 0 us, query 0 us, wait 0 us
+2026-06-04 19:37:17.913 UTC [1] LOG C-0x71e555061698: (nodb)/(nouser)@172.16.34.10:52690 no such user: listmonk_app
+2026-06-04 19:37:17.913 UTC [1] LOG C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:52690 login attempt: db=listmonk user=listmonk_app tls=no replication=no
+2026-06-04 19:37:17.914 UTC [1] ERROR C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:52690 password authentication failed
+2026-06-04 19:37:17.914 UTC [1] LOG C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:52690 closing because: SASL authentication failed (age=0s)
+2026-06-04 19:37:17.914 UTC [1] WARNING C-0x71e555061698: (nodb)/listmonk_app@172.16.34.10:52690 pooler error: SASL authentication failed
+
+===== nexus-postgres =====
+2026-06-04 19:28:59.141 UTC [456318] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:29:09.193 UTC [456326] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:29:19.255 UTC [456334] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:29:29.307 UTC [456342] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:29:39.356 UTC [456350] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:29:49.405 UTC [456358] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:29:59.459 UTC [456366] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:30:09.511 UTC [456374] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:30:19.568 UTC [456382] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:30:29.630 UTC [456391] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:30:39.682 UTC [456399] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:30:49.742 UTC [456407] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:30:59.794 UTC [456415] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:31:09.851 UTC [456423] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:31:19.905 UTC [456431] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:31:29.958 UTC [456439] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:31:40.010 UTC [456447] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:31:50.072 UTC [456455] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:32:00.154 UTC [456463] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:32:10.205 UTC [456471] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:32:20.260 UTC [456479] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:32:30.312 UTC [456487] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:32:40.366 UTC [456495] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:32:50.417 UTC [456503] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:33:00.473 UTC [456511] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:33:10.537 UTC [456520] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:33:20.598 UTC [456528] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:33:30.661 UTC [456536] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:33:40.711 UTC [456544] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:33:50.768 UTC [456552] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:34:00.852 UTC [456559] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:34:10.903 UTC [456567] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:34:20.962 UTC [456575] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:34:31.019 UTC [456583] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:34:41.074 UTC [456591] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:34:51.127 UTC [456599] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:35:01.286 UTC [456607] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:35:11.346 UTC [456615] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:35:21.402 UTC [456623] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:35:31.467 UTC [456631] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:35:41.519 UTC [456639] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:35:51.574 UTC [456647] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:36:01.640 UTC [456656] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:36:11.699 UTC [456664] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:36:21.754 UTC [456672] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:36:31.812 UTC [456680] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:36:41.870 UTC [456688] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:36:51.924 UTC [456695] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:37:01.985 UTC [456703] FATAL:  database "nexus_admin" does not exist
+2026-06-04 19:37:12.033 UTC [456712] FATAL:  database "nexus_admin" does not exist
+

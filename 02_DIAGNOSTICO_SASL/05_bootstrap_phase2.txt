@@ -1,0 +1,9 @@
+/opt/nexus/scripts/04-init-databases.sh:12:docker exec -i -e PGPASSWORD="${PG_ADMIN_PASS}" nexus-postgres psql -U "${PG_ADMIN_USER}" -d postgres   -v pg_dify_pass="${PG_DIFY_PASS}"   -v pg_n8n_pass="${PG_N8N_PASS}"   -v pg_litellm_pass="${PG_LITELLM_PASS}"   -v pg_nexus_core_pass="${PG_NEXUS_CORE_PASS}"   -v pg_listmonk_pass="${PG_LISTMONK_PASS}"   -v pg_postiz_pass="${PG_POSTIZ_PASS}"   -v pg_evolution_pass="${PG_EVOLUTION_PASS}"   -v pg_plausible_pass="${PG_PLAUSIBLE_PASS}"   < db-init/00-bootstrap.sql
+/opt/nexus/scripts/06-deploy-phase-2.sh:2:# NEXUS v1.3 · 06-deploy-phase-2.sh · Evolution + Listmonk + Postiz
+/opt/nexus/scripts/06-deploy-phase-2.sh:20:for svc in nexus-evolution nexus-listmonk nexus-postiz; do
+/opt/nexus/scripts/06-deploy-phase-2.sh:31:docker ps --filter "name=nexus-" --format "table {{.Names}}\t{{.Status}}" | grep -E "evolution|listmonk|postiz"
+/opt/nexus/scripts/06-deploy-phase-2.sh:34:echo "  https://wa.${DOMAIN}      — Evolution API"
+/opt/nexus/scripts/06-deploy-phase-2.sh:35:echo "  https://email.${DOMAIN}   — Listmonk"
+/opt/nexus/scripts/06-deploy-phase-2.sh:36:echo "  https://postiz.${DOMAIN}  — Postiz"
+/opt/nexus/scripts/06-deploy-phase-2.sh:39:echo "  1. Crear instancia WhatsApp en Evolution API"
+/opt/nexus/scripts/06-deploy-phase-2.sh:41:echo "  3. Configurar SMTP en Listmonk"
