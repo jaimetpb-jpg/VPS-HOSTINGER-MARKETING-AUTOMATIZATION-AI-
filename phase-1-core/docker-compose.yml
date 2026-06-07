@@ -41,44 +41,46 @@ volumes:
     name: nexus_uptimekuma_data
 
 services:
-  # ────────── TRAEFIK ──────────
-  traefik:
-    image: traefik:v3.1
-    container_name: nexus-traefik
-    restart: unless-stopped
-    command:
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=nexus-public"
-      - "--providers.file.directory=/etc/traefik/dynamic"
-      - "--providers.file.watch=true"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.le.acme.storage=/certs/acme.json"
-      - "--certificatesresolvers.le.acme.tlschallenge=true"
-      # STAGING (descomentar para primeros deploys y evitar rate limit LE):
-      # - "--certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
-      - "--log.level=INFO"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_certs:/certs
-      - ../configs/traefik-basic-auth.yml:/etc/traefik/dynamic/auth.yml:ro
-    networks:
-      - nexus-public
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
-      - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.tls.certresolver=le"
-      - "traefik.http.routers.dashboard.middlewares=basic-auth@file"
-
+#DISABLED   # ────────── TRAEFIK ──────────
+#DISABLED   traefik:
+#DISABLED     image: traefik:v3.1
+#DISABLED     container_name: nexus-traefik
+#DISABLED     restart: unless-stopped
+#DISABLED     command:
+#DISABLED       - "--api.dashboard=true"
+#DISABLED       - "--providers.docker=true"
+#DISABLED       - "--providers.docker.exposedbydefault=false"
+#DISABLED       - "--providers.docker.network=nexus-public"
+#DISABLED       - "--providers.file.directory=/etc/traefik/dynamic"
+#DISABLED       - "--providers.file.watch=true"
+#DISABLED       - "--entrypoints.web.address=:80"
+#DISABLED       - "--entrypoints.websecure.address=:443"
+#DISABLED       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+#DISABLED       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+#DISABLED       - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
+#DISABLED       - "--certificatesresolvers.le.acme.storage=/certs/acme.json"
+#DISABLED       - "--certificatesresolvers.le.acme.tlschallenge=true"
+#DISABLED       # STAGING (descomentar para primeros deploys y evitar rate limit LE):
+#DISABLED       # - "--certificatesresolvers.le.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+#DISABLED       - "--log.level=INFO"
+#DISABLED     ports:
+#DISABLED       - "80:80"
+#DISABLED       - "443:443"
+#DISABLED     volumes:
+#DISABLED       - /var/run/docker.sock:/var/run/docker.sock:ro
+#DISABLED       - traefik_certs:/certs
+#DISABLED       - ../configs/traefik-basic-auth.yml:/etc/traefik/dynamic/auth.yml:ro
+#DISABLED     environment:
+#DISABLED       - DOCKER_API_VERSION=1.45
+#DISABLED     networks:
+#DISABLED       - nexus-public
+#DISABLED     labels:
+#DISABLED       - "traefik.enable=true"
+#DISABLED       - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+#DISABLED       - "traefik.http.routers.dashboard.service=api@internal"
+#DISABLED       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+#DISABLED       - "traefik.http.routers.dashboard.middlewares=basic-auth@file"
+#DISABLED 
   # ────────── POSTGRES ──────────
   postgres:
     image: postgres:16.6-alpine
@@ -110,7 +112,7 @@ services:
   # ────────── PGBOUNCER · pool de conexiones (Kimi opportunity K) ──────────
   # 50MB · maneja 1000+ conexiones cliente con solo 50 al backend
   pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
+    image: edoburu/pgbouncer:latest
     container_name: nexus-pgbouncer
     restart: unless-stopped
     environment:
@@ -196,7 +198,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.litellm.rule=Host(`llm.${DOMAIN}`)"
       - "traefik.http.routers.litellm.entrypoints=websecure"
-      - "traefik.http.routers.litellm.tls.certresolver=le"
+      - "traefik.http.routers.litellm.tls.certresolver=letsencrypt"
       - "traefik.http.services.litellm.loadbalancer.server.port=4000"
 
   # ────────── DIFY API · SIN SANDBOX (Bug #4 fix) ──────────
@@ -231,7 +233,7 @@ services:
       OPENDAL_SCHEME: fs
       OPENDAL_FS_ROOT: /app/storage
       # CODE EXECUTION DESACTIVADO (sin sandbox)
-      CODE_EXECUTION_ENDPOINT: ""
+      CODE_EXECUTION_ENDPOINT: "http://127.0.0.1:8194"
       OPENAI_API_BASE: http://litellm:4000/v1
     volumes:
       - dify_storage:/app/storage
@@ -249,7 +251,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.dify-api.rule=Host(`dify.${DOMAIN}`) && (PathPrefix(`/console/api`) || PathPrefix(`/api`) || PathPrefix(`/v1`) || PathPrefix(`/files`))"
       - "traefik.http.routers.dify-api.entrypoints=websecure"
-      - "traefik.http.routers.dify-api.tls.certresolver=le"
+      - "traefik.http.routers.dify-api.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dify-api.priority=10"
       - "traefik.http.services.dify-api.loadbalancer.server.port=5001"
 
@@ -305,7 +307,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.dify-web.rule=Host(`dify.${DOMAIN}`)"
       - "traefik.http.routers.dify-web.entrypoints=websecure"
-      - "traefik.http.routers.dify-web.tls.certresolver=le"
+      - "traefik.http.routers.dify-web.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dify-web.priority=1"
       - "traefik.http.services.dify-web.loadbalancer.server.port=3000"
 
@@ -372,7 +374,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.n8n.rule=Host(`n8n.${DOMAIN}`)"
       - "traefik.http.routers.n8n.entrypoints=websecure"
-      - "traefik.http.routers.n8n.tls.certresolver=le"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
 
   n8n-worker:
@@ -477,5 +479,5 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.status.rule=Host(`status.${DOMAIN}`)"
       - "traefik.http.routers.status.entrypoints=websecure"
-      - "traefik.http.routers.status.tls.certresolver=le"
+      - "traefik.http.routers.status.tls.certresolver=letsencrypt"
       - "traefik.http.services.status.loadbalancer.server.port=3001"
