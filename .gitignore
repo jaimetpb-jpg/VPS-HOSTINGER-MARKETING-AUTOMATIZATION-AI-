@@ -2,3 +2,5 @@
 .env
 .env.backup*
 .env.credentials-readme.txt
+userlist_vivo.txt
+VALIDACION_02_env_vars.txt

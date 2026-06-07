@@ -1,0 +1,3 @@
+n8n-worker
+n8n-worker-2
+dify-worker

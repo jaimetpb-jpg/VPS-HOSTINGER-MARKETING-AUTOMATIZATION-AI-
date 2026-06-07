@@ -1,0 +1,1 @@
+[No se pudo consultar imagen - docker run sin .env falla con warnings pero sin respuesta de DB]

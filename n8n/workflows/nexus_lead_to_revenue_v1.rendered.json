@@ -1,0 +1,406 @@
+{
+  "name": "NEXUS Lead-to-Revenue Engine v1.0",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nexus-lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook_lead_intake",
+      "name": "Webhook · Lead Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, received: true, workflow: 'nexus-lead-to-revenue-v1' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond_early",
+      "name": "Respond · Early 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -650,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body || $json;\nconst cleanPhone = String(input.phone || input.telefono || '').replace(/[^0-9]/g, '');\nreturn [{json:{tenant_id: input.tenant_id || 'ainexus',name: input.name || input.nombre || '',company: input.company || input.empresa || '',phone: cleanPhone,email: input.email || '',website: input.website || '',message: input.message || input.mensaje || '',source: input.source || 'webhook',received_at: new Date().toISOString()}}];"
+      },
+      "id": "normalize_lead",
+      "name": "Code · Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -650,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://example.invalid/mock-data-api/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "MOCK_DATA_API_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer MOCK_DATA_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "upsert_lead",
+      "name": "HTTP · Upsert Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [
+        -380,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.dify.ai/v1/chat-messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_DIFY_LEAD_QUALIFIER_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ inputs: {}, query: JSON.stringify($node['Code · Normalize Lead'].json), response_mode: 'blocking', user: $node['Code · Normalize Lead'].json.phone || 'anonymous' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "dify_qualifier",
+      "name": "HTTP · Dify Lead Qualifier",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -100,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json.answer || $json.text || $json.data || $json;\nlet parsed = response;\nif (typeof response === 'string') {\n  const cleaned = response.replace(/```json|```/g, '').trim();\n  try { parsed = JSON.parse(cleaned); }\n  catch (error) { parsed = { score: 0, tier: 'COLD', reason: 'Dify answer was not valid JSON', raw_answer: cleaned }; }\n}\nconst rawScore = Number(parsed.score ?? 0);\nconst score = Math.max(0, Math.min(100, Number.isFinite(rawScore) ? rawScore : 0));\nlet tier = String(parsed.tier || '').toUpperCase();\nif (!['HOT','WARM','COLD'].includes(tier)) tier = score >= 75 ? 'HOT' : score >= 40 ? 'WARM' : 'COLD';\nreturn [{json:{score,tier,intent: parsed.intent || '',pain_point: parsed.pain_point || '',reason: parsed.reason || '',recommended_action: parsed.recommended_action || '',suggested_reply: parsed.suggested_reply || '',raw_answer: parsed.raw_answer || undefined}}];"
+      },
+      "id": "parse_score",
+      "name": "Code · Parse Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "HOT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "WARM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "switch_tier",
+      "name": "Switch · HOT/WARM/COLD",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        450,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wa.tudominio.com/message/sendText/ainexus-main",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "REPLACE_EVOLUTION_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: '521XXXXXXXXXX', text: '🔥 HOT lead NEXUS\\nScore: ' + $json.score + '\\nIntent: ' + $json.intent + '\\nRazón: ' + $json.reason + '\\nAcción: ' + $json.recommended_action }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wa_operator_hot",
+      "name": "WhatsApp · Notify Operator HOT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        730,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://wa.tudominio.com/message/sendText/ainexus-main",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "REPLACE_EVOLUTION_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: '521XXXXXXXXXX', text: '🟡 WARM lead NEXUS\\nScore: ' + $json.score + '\\nIntent: ' + $json.intent + '\\nSiguiente: ' + $json.recommended_action }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wa_operator_warm",
+      "name": "WhatsApp · Notify Operator WARM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        730,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://example.invalid/mock-data-api/ai_task",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "MOCK_DATA_API_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer MOCK_DATA_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ workflow_name: 'lead_to_revenue_v1', status: 'done', input_payload: $node['Code · Normalize Lead'].json, output_payload: $node['Code · Parse Score'].json }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "log_task",
+      "name": "HTTP · Log ai_task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput",
+      "position": [
+        1010,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook · Lead Intake": {
+      "main": [
+        [
+          {
+            "node": "Respond · Early 200",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code · Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Upsert Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Upsert Lead": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Dify Lead Qualifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP · Dify Lead Qualifier": {
+      "main": [
+        [
+          {
+            "node": "Code · Parse Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code · Parse Score": {
+      "main": [
+        [
+          {
+            "node": "Switch · HOT/WARM/COLD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch · HOT/WARM/COLD": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp · Notify Operator HOT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WhatsApp · Notify Operator WARM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP · Log ai_task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp · Notify Operator HOT": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Log ai_task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp · Notify Operator WARM": {
+      "main": [
+        [
+          {
+            "node": "HTTP · Log ai_task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "nexus-template-v1"
+}

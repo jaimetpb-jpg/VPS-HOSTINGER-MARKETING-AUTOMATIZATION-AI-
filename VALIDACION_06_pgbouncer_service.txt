@@ -1,0 +1,21 @@
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: nexus-pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASS}@postgres:5432/postgres
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      RESERVE_POOL_SIZE: 5
+      AUTH_TYPE: scram-sha-256
+      AUTH_USER: ${PG_ADMIN_USER}
+      ADMIN_USERS: ${PG_ADMIN_USER}
+      LISTEN_PORT: 6432
+      SERVER_TLS_SSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nexus-backbone
+      - nexus-ai

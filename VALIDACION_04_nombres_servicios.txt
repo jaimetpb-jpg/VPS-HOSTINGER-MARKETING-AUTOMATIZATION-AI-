@@ -1,0 +1,12 @@
+postgres
+redis
+dify-api
+n8n-main
+n8n-worker-2
+qdrant
+uptimekuma
+dify-web
+dify-worker
+litellm
+n8n-worker
+pgbouncer
