@@ -114,7 +114,7 @@ services:
     container_name: nexus-pgbouncer
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASS}@postgres:5432/postgres
+      DATABASE_URLS: "postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASS}@postgres:5432/postgres,postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASS}@postgres:5432/evolution,postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASS}@postgres:5432/listmonk,postgres://${PG_ADMIN_USER}:${PG_ADMIN_PASS}@postgres:5432/postiz"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 25
@@ -381,7 +381,7 @@ services:
     restart: unless-stopped
     command: worker
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5678/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -397,6 +397,7 @@ services:
       QUEUE_BULL_REDIS_PASSWORD: ${REDIS_PASS}
       QUEUE_BULL_REDIS_DB: 3
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      QUEUE_HEALTH_CHECK_ACTIVE: "true"
       GENERIC_TIMEZONE: ${TZ}
       # ── Business vars for workflows (MUST match n8n-main) ──
       DOMAIN: ${DOMAIN}
@@ -424,7 +425,7 @@ services:
     restart: unless-stopped
     command: worker
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5678/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5678/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -442,6 +443,7 @@ services:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: ${TZ}
       N8N_RUNNERS_ENABLED: "true"
+      QUEUE_HEALTH_CHECK_ACTIVE: "true"
       # ── Business vars for workflows (MUST match n8n-main) ──
       DOMAIN: ${DOMAIN}
       OPERATOR_WHATSAPP: ${OPERATOR_WHATSAPP}
