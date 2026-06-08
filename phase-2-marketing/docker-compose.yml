@@ -55,7 +55,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.wa.rule=Host(`wa.${DOMAIN}`)"
       - "traefik.http.routers.wa.entrypoints=websecure"
-      - "traefik.http.routers.wa.tls.certresolver=le"
+      - "traefik.http.routers.wa.tls.certresolver=letsencrypt"
       - "traefik.http.services.wa.loadbalancer.server.port=8080"
 
   # ────────── LISTMONK ──────────
@@ -84,7 +84,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.email.rule=Host(`email.${DOMAIN}`)"
       - "traefik.http.routers.email.entrypoints=websecure"
-      - "traefik.http.routers.email.tls.certresolver=le"
+      - "traefik.http.routers.email.tls.certresolver=letsencrypt"
       - "traefik.http.services.email.loadbalancer.server.port=9000"
 
   # ────────── POSTIZ · BUG #3 fix: pinneado v2.21.7 ──────────
@@ -115,7 +115,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.postiz.rule=Host(`postiz.${DOMAIN}`)"
       - "traefik.http.routers.postiz.entrypoints=websecure"
-      - "traefik.http.routers.postiz.tls.certresolver=le"
+      - "traefik.http.routers.postiz.tls.certresolver=letsencrypt"
       - "traefik.http.services.postiz.loadbalancer.server.port=5000"
 
   # ════════════════════════════════════════════════════════════
