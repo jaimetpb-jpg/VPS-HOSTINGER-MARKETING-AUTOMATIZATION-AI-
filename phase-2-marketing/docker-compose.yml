@@ -89,7 +89,7 @@ services:
 
   # ────────── POSTIZ · BUG #3 fix: pinneado v2.21.7 ──────────
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:v2.11.5  # MVP: pre-Temporal. Upgrade a v2.21.7 + Temporal después del primer cliente
+    image: ghcr.io/gitroomhq/postiz-app:v2.21.7  # MVP: pre-Temporal. Upgrade a v2.21.7 + Temporal después del primer cliente
     container_name: nexus-postiz
     restart: unless-stopped
     environment:
